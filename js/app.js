@@ -1028,6 +1028,7 @@
         initialCode: '; Modo Livre: escreva o que quiser!\nREPITA 36 [\n  REPITA 4 [PF 100 PD 90]\n  PD 10\n]',
         redo: true,
         freeTools: true,
+        bigStage: true,      // Modo Livre: mundo bem maior
         onFinish: (compiled) => fireEvent('run', { analysis: compiled.analysis }),
         onSave: saveDrawing,
       });

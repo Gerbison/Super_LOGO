@@ -9,6 +9,7 @@
  *     resetEachRun: true,         // cada execução começa do zero?
  *     redo: false,                // mostrar botão Refazer
  *     freeTools: false,           // cores, espessura, PNG, .txt (Modo Livre)
+ *     bigStage: false,            // mundo maior (Modo Livre)
  *     colorIterations: false,     // uma cor por volta do REPITA
  *     onFinish(compiled, state),  // execução terminou
  *     onError(err), onRunStart(compiled), onSave(ws)
@@ -68,7 +69,7 @@
 
   function template(o, id) {
     return `
-    <div class="ws">
+    <div class="ws${o.bigStage ? ' ws-big' : ''}">
       <div class="ws-main">
         <div class="panel stage-panel">
           <div class="stage-wrap">
@@ -197,7 +198,7 @@
     constructor(container, options) {
       this.opts = Object.assign({
         storageKey: null, initialCode: '', resetEachRun: true, redo: false, freeTools: false,
-        palette: true, colorIterations: false, saveLabel: 'Código salvo neste navegador.',
+        palette: true, colorIterations: false, bigStage: false, saveLabel: 'Código salvo neste navegador.',
         placeholder: 'Escreva seus comandos aqui...\nExemplo: PF 100',
         onFinish: null, onError: null, onRunStart: null, onSave: null,
       }, options || {});
