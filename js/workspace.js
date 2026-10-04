@@ -22,17 +22,8 @@
 
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  const PALETTE = [
-    { code: 'PF 100', label: 'PF 100', title: 'Para frente 100 passos' },
-    { code: 'PT 100', label: 'PT 100', title: 'Para trás 100 passos' },
-    { code: 'PD 90', label: 'PD 90', title: 'Girar 90° para a direita' },
-    { code: 'PE 90', label: 'PE 90', title: 'Girar 90° para a esquerda' },
-    { code: 'REPITA 4 [  ]', label: 'REPITA 4 [ ]', title: 'Repetir comandos', caret: -2 },
-    { code: 'LEVANTE', label: 'LEVANTE', title: 'Andar sem desenhar' },
-    { code: 'BAIXE', label: 'BAIXE', title: 'Voltar a desenhar' },
-    { code: 'LIMPE', label: 'LIMPE', title: 'Apagar o desenho' },
-    { code: 'CENTRO', label: 'CENTRO', title: 'Voltar ao centro' },
-  ];
+  /* Ordem dos blocos no painel "Comandos da Linguagem". */
+  const CMD_ORDER = ['PF', 'PT', 'PD', 'PE', 'BAIXE', 'LEVANTE', 'LIMPE', 'CENTRO', 'REPITA'];
 
   const PEN_COLORS = [
     { v: '', name: 'Automática' }, { v: '#e4572e', name: 'Vermelho' }, { v: '#f08a24', name: 'Laranja' },
@@ -40,78 +31,133 @@
     { v: '#7048e8', name: 'Roxo' }, { v: '#d6336c', name: 'Rosa' }, { v: '#7c5a3a', name: 'Marrom' },
   ];
 
+  /* Ícones de linha (SVG) usados nos títulos dos painéis. */
+  const ICON = {
+    keyboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
+    result: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>',
+    info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    book: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>',
+    gauge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 14l4-5"/></svg>',
+    palette: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.2 0-1.1.9-2 2-2h2.3A4.7 4.7 0 0 0 22 9.8C22 6 17.5 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg>',
+  };
+
+  const COMPASS = `
+    <svg class="compass" viewBox="0 0 80 80" aria-hidden="true">
+      <circle cx="40" cy="40" r="30" class="c-ring"/>
+      <path d="M40 14 L46 40 L40 66 L34 40 Z" class="c-ns"/>
+      <path d="M40 14 L46 40 L34 40 Z" class="c-north"/>
+      <path d="M14 40 L40 35 L66 40 L40 45 Z" class="c-we"/>
+      <circle cx="40" cy="40" r="3" class="c-dot"/>
+      <text x="40" y="9" class="c-txt">N</text><text x="40" y="78" class="c-txt">S</text>
+      <text x="4" y="43" class="c-txt">O</text><text x="76" y="43" class="c-txt">L</text>
+    </svg>`;
+
+  function commandTiles() {
+    return CMD_ORDER.filter((n) => Logo.commands[n]).map((n) => {
+      const d = Logo.commands[n].doc;
+      return `
+        <button type="button" class="cmd-tile" data-insert="${esc(d.short)}" style="--c:${d.color}" title="Inserir ${esc(d.short)} no editor">
+          <span class="cmd-badge${d.dark ? ' dark' : ''}">${n}</span>
+          <span class="cmd-info">
+            <b>${esc(d.label)}</b>
+            <span class="cmd-ex"><code>${esc(d.short)}</code> <small>(${esc(d.note)})</small></span>
+          </span>
+        </button>`;
+    }).join('');
+  }
+
   function template(o, id) {
     return `
     <div class="ws">
-      <div class="ws-stage">
-        <div class="stage-wrap">
-          <canvas class="stage-canvas" role="img" aria-label="Mundo da tartaruga: a tartaruga começa no centro, olhando para cima."></canvas>
-          <div class="stage-top">
-            <span class="badge loop-badge" hidden></span>
-            <span class="badge pen-badge" hidden>✋ Caneta levantada</span>
+      <div class="ws-main">
+        <div class="panel stage-panel">
+          <div class="stage-wrap">
+            <canvas class="stage-canvas" role="img" aria-label="Mundo da tartaruga: a tartaruga começa no centro, olhando para cima."></canvas>
+            ${COMPASS}
+            <div class="stage-top">
+              <span class="badge loop-badge" hidden></span>
+              <span class="badge pen-badge" hidden>✋ Caneta levantada</span>
+            </div>
+            <div class="stage-zoom" role="group" aria-label="Zoom do mundo">
+              <button type="button" class="icon-btn" data-act="zoom-out" title="Afastar" aria-label="Afastar">−</button>
+              <button type="button" class="icon-btn" data-act="zoom-fit" title="Ajustar ao desenho" aria-label="Ajustar ao desenho">⤢</button>
+              <button type="button" class="icon-btn" data-act="zoom-in" title="Aproximar" aria-label="Aproximar">+</button>
+            </div>
+            <div class="stage-status"></div>
           </div>
-          <div class="stage-zoom" role="group" aria-label="Zoom do mundo">
-            <button type="button" class="icon-btn" data-act="zoom-out" title="Afastar" aria-label="Afastar">−</button>
-            <button type="button" class="icon-btn" data-act="zoom-fit" title="Ajustar ao desenho" aria-label="Ajustar ao desenho">⤢</button>
-            <button type="button" class="icon-btn" data-act="zoom-in" title="Aproximar" aria-label="Aproximar">+</button>
-          </div>
-          <div class="stage-status"></div>
         </div>
-      </div>
-      <div class="ws-side">
-        <div class="editor card">
-          <div class="editor-head">
-            <label for="code-${id}">📝 Seu programa</label>
-            <span class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> executa</span>
+
+        <div class="panel editor-panel">
+          <div class="panel-head">
+            <label class="panel-title" for="code-${id}">${ICON.keyboard} Editor de Código</label>
+            <div class="toolbar" role="toolbar" aria-label="Controles do programa">
+              <button type="button" class="tbtn tbtn-run" data-act="run">▶ <span>Executar</span></button>
+              <button type="button" class="tbtn tbtn-stop" data-act="stop" disabled>■ <span>Parar</span></button>
+              <button type="button" class="tbtn" data-act="undo">↶ <span>Desfazer</span></button>
+              ${o.redo ? '<button type="button" class="tbtn" data-act="redo">↷ <span>Refazer</span></button>' : ''}
+              <button type="button" class="tbtn" data-act="clear">🗑 <span>Limpar</span></button>
+              <button type="button" class="tbtn" data-act="save">💾 <span>Salvar</span></button>
+            </div>
           </div>
           <div class="editor-body">
             <div class="gutter" aria-hidden="true"></div>
             <div class="code-area">
-              <pre class="backdrop" aria-hidden="true"><code></code></pre>
-              <textarea id="code-${id}" class="code-input" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"
+              <pre class="code-layer marks" aria-hidden="true"><code></code></pre>
+              <pre class="code-layer hl" aria-hidden="true"><code></code></pre>
+              <textarea id="code-${id}" class="code-input" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
                 placeholder="${esc(o.placeholder)}"></textarea>
             </div>
           </div>
+          <p class="editor-foot"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> executa · <kbd>Esc</kbd> para · clique num comando à direita para inseri-lo</p>
         </div>
-        <div class="toolbar" role="toolbar" aria-label="Controles do programa">
-          <button type="button" class="btn btn-run" data-act="run">▶ Executar</button>
-          <button type="button" class="btn" data-act="stop" disabled>⏹ Parar</button>
-          <button type="button" class="btn" data-act="undo">↶ Desfazer</button>
-          ${o.redo ? '<button type="button" class="btn" data-act="redo">↷ Refazer</button>' : ''}
-          <button type="button" class="btn" data-act="clear">🗑 Limpar</button>
-          <button type="button" class="btn" data-act="save">💾 Salvar</button>
+
+        <div class="ws-bottom">
+          <section class="panel result-panel">
+            <div class="panel-head small"><h3 class="panel-title">${ICON.result} Resultado</h3></div>
+            <div class="ws-result" aria-live="polite"></div>
+          </section>
+          <section class="panel msg-panel">
+            <div class="panel-head small">
+              <h3 class="panel-title">${ICON.info} Mensagens</h3>
+              <button type="button" class="icon-btn icon-btn-ghost" data-act="msg-clear" title="Limpar mensagens" aria-label="Limpar mensagens">✕</button>
+            </div>
+            <div class="ws-message" role="status" aria-live="polite"></div>
+          </section>
         </div>
-        <fieldset class="speed">
-          <legend>Velocidade</legend>
-          <label><input type="radio" name="speed-${id}" value="lenta"> 🐢 Lenta</label>
-          <label><input type="radio" name="speed-${id}" value="normal"> 🚶 Normal</label>
-          <label><input type="radio" name="speed-${id}" value="rapida"> ⚡ Rápida</label>
-        </fieldset>
-        <div class="ws-message" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="ws-side">
         ${o.freeTools ? freeToolsTemplate(id) : ''}
         ${o.palette ? `
-        <div class="palette card">
-          <p class="palette-title">🧱 Comandos <small>(clique para inserir)</small></p>
-          <div class="palette-btns">
-            ${PALETTE.map((p, i) => `<button type="button" class="chip-btn" data-palette="${i}" title="${esc(p.title)}">${esc(p.label)}</button>`).join('')}
+        <section class="panel commands-panel">
+          <div class="panel-head"><h3 class="panel-title">${ICON.book} Comandos da Linguagem</h3></div>
+          <div class="cmd-list">${commandTiles()}</div>
+        </section>` : ''}
+        <section class="panel speed-panel">
+          <div class="panel-head"><h3 class="panel-title" id="speed-title-${id}">${ICON.gauge} Controle de Velocidade</h3></div>
+          <div class="speed" role="radiogroup" aria-labelledby="speed-title-${id}">
+            <label class="speed-opt"><input type="radio" name="speed-${id}" value="lenta"><span class="sp-icon">🐢</span><span>Lenta</span></label>
+            <label class="speed-opt"><input type="radio" name="speed-${id}" value="normal"><span class="sp-icon">🚶</span><span>Normal</span></label>
+            <label class="speed-opt"><input type="radio" name="speed-${id}" value="rapida"><span class="sp-icon">⚡</span><span>Rápida</span></label>
           </div>
-        </div>` : ''}
+        </section>
       </div>
     </div>`;
   }
 
   function freeToolsTemplate(id) {
     return `
-      <div class="free-tools card">
+      <section class="panel free-tools">
+        <div class="panel-head"><h3 class="panel-title">${ICON.palette} Ferramentas de desenho</h3></div>
         <div class="tool-row">
-          <span class="tool-label">🎨 Cor da caneta</span>
+          <span class="tool-label">Cor da caneta</span>
           <div class="swatches" role="radiogroup" aria-label="Cor da caneta">
             ${PEN_COLORS.map((c) => `<button type="button" class="swatch${c.v ? '' : ' swatch-auto'}" data-color="${c.v}" style="${c.v ? `--sw:${c.v}` : ''}" title="${c.name}" aria-label="${c.name}" role="radio" aria-checked="false">${c.v ? '' : 'A'}</button>`).join('')}
             <label class="swatch swatch-custom" title="Outra cor"><span class="sr-only">Outra cor</span><input type="color" data-act="color-custom" value="#1c7ed6"></label>
           </div>
         </div>
         <div class="tool-row">
-          <label class="tool-label" for="width-${id}">✏️ Espessura</label>
+          <label class="tool-label" for="width-${id}">Espessura</label>
           <input type="range" id="width-${id}" min="1" max="12" step="1" data-act="width">
           <output class="width-out">3</output>
         </div>
@@ -119,12 +165,32 @@
           <button type="button" class="btn btn-sm" data-act="pen">✋ Levantar caneta</button>
           <button type="button" class="btn btn-sm" data-act="home">🎯 Voltar ao centro</button>
         </div>
-        <label class="check"><input type="checkbox" data-act="continue"> Continuar o desenho entre execuções (não limpar)</label>
+        <label class="check"><input type="checkbox" data-act="continue"> Continuar o desenho entre execuções</label>
         <div class="tool-row tool-buttons">
-          <button type="button" class="btn btn-sm" data-act="png">📤 Compartilhar meu desenho (PNG)</button>
-          <button type="button" class="btn btn-sm" data-act="txt">⬇️ Baixar meu código (.txt)</button>
+          <button type="button" class="btn btn-sm" data-act="png">📤 Compartilhar desenho (PNG)</button>
+          <button type="button" class="btn btn-sm" data-act="txt">⬇️ Baixar código (.txt)</button>
         </div>
-      </div>`;
+      </section>`;
+  }
+
+  /* Pinta o código: cada comando com a cor do seu bloco. */
+  const TOKEN_RE = /(;[^\n]*|\/\/[^\n]*)|([A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ_0-9]*)|([-+]?\d+(?:[.,]\d+)?)|([[\]])/g;
+
+  function highlight(text) {
+    let out = '', last = 0, m;
+    TOKEN_RE.lastIndex = 0;
+    while ((m = TOKEN_RE.exec(text))) {
+      out += esc(text.slice(last, m.index));
+      const t = esc(m[0]);
+      if (m[1]) out += `<span class="tk-com">${t}</span>`;
+      else if (m[2]) {
+        const name = Logo.lookup(m[2]);
+        out += name ? `<span class="tk-cmd" style="color:${Logo.commands[name].doc.hl}">${t}</span>` : `<span class="tk-unk">${t}</span>`;
+      } else if (m[3]) out += `<span class="tk-num">${t}</span>`;
+      else out += `<span class="tk-br">${t}</span>`;
+      last = m.index + m[0].length;
+    }
+    return out + esc(text.slice(last));
   }
 
   class Workspace {
@@ -141,8 +207,9 @@
       this.$ = (sel) => this.root.querySelector(sel);
 
       this.textarea = this.$('.code-input');
-      this.backdrop = this.$('.backdrop code');
-      this.backdropPre = this.$('.backdrop');
+      this.marksLayer = this.$('.code-layer.marks');
+      this.hlLayer = this.$('.code-layer.hl');
+      this.resultEl = this.$('.ws-result');
       this.gutter = this.$('.gutter');
       this.msg = this.$('.ws-message');
       this.loopBadge = this.$('.loop-badge');
@@ -165,6 +232,8 @@
       this.currentNode = null;
 
       this.setCode(this.opts.storageKey ? Store.code(this.opts.storageKey, this.opts.initialCode) : this.opts.initialCode);
+      this.clearMessage();
+      this.setResult('idle', '<p class="muted">Nenhuma execução ainda.</p>');
       this.applySettings();
       this.bind();
       this.updateStatus();
@@ -173,16 +242,16 @@
     /* ------------------------------ Eventos ------------------------------ */
     bind() {
       this.root.addEventListener('click', (e) => {
-        const b = e.target.closest('[data-act], [data-palette], [data-color]');
+        const b = e.target.closest('[data-act], [data-insert], [data-color]');
         if (!b || b.disabled) return;
-        if (b.dataset.palette !== undefined) return this.insert(PALETTE[+b.dataset.palette]);
+        if (b.dataset.insert !== undefined) return this.insert({ code: b.dataset.insert });
         if (b.dataset.color !== undefined) return this.setPenColor(b.dataset.color);
         const act = b.dataset.act;
         const fn = {
           run: () => this.run(), stop: () => this.stop(true), undo: () => this.undo(), redo: () => this.redo(),
           clear: () => this.clear(), save: () => this.save(), pen: () => this.togglePen(), home: () => this.home(),
           png: () => this.sharePNG(), txt: () => this.downloadTxt(),
-          'zoom-in': () => this.zoom(0.8), 'zoom-out': () => this.zoom(1.25), 'zoom-fit': () => this.zoomFit(),
+          'msg-clear': () => this.clearMessage(), 'zoom-in': () => this.zoom(0.8), 'zoom-out': () => this.zoom(1.25), 'zoom-fit': () => this.zoomFit(),
         }[act];
         if (fn) fn();
       });
@@ -265,13 +334,11 @@
     renderEditor() {
       const text = this.textarea.value;
       const m = this.mark;
-      let html;
-      if (m && m.end > m.start) {
-        html = esc(text.slice(0, m.start)) + `<mark class="${m.kind}">` + esc(text.slice(m.start, m.end)) + '</mark>' + esc(text.slice(m.end));
-      } else {
-        html = esc(text);
-      }
-      this.backdrop.innerHTML = html + '\n';
+      const marks = m && m.end > m.start
+        ? esc(text.slice(0, m.start)) + `<mark class="${m.kind}">` + esc(text.slice(m.start, m.end)) + '</mark>' + esc(text.slice(m.end))
+        : esc(text);
+      this.marksLayer.firstChild.innerHTML = marks + '\n';
+      this.hlLayer.firstChild.innerHTML = highlight(text) + '\n';
       const lines = text.split('\n').length;
       const activeLine = m ? text.slice(0, m.start).split('\n').length : 0;
       let g = '';
@@ -281,8 +348,10 @@
     }
 
     syncScroll() {
-      this.backdropPre.scrollTop = this.textarea.scrollTop;
-      this.backdropPre.scrollLeft = this.textarea.scrollLeft;
+      for (const l of [this.marksLayer, this.hlLayer]) {
+        l.scrollTop = this.textarea.scrollTop;
+        l.scrollLeft = this.textarea.scrollLeft;
+      }
       this.gutter.scrollTop = this.textarea.scrollTop;
     }
 
@@ -310,8 +379,14 @@
     }
 
     clearMessage() {
-      this.msg.className = 'ws-message';
-      this.msg.innerHTML = '';
+      this.msg.className = 'ws-message idle';
+      this.msg.innerHTML = '<p>💡 Pronto para executar.</p><p class="muted">Clique em <b>▶ Executar</b> para ver a tartaruga em ação!</p>';
+    }
+
+    /** Painel "Resultado": o que aconteceu na última execução. */
+    setResult(kind, html) {
+      this.resultEl.className = 'ws-result ' + kind;
+      this.resultEl.innerHTML = html;
     }
 
     showError(e) {
@@ -325,6 +400,7 @@
         <p>${esc(e.message || '')}</p>
         ${e.snippet ? `<p class="msg-snippet-label">${e.snippet.includes('???') ? 'O que está faltando:' : 'Exemplo correto:'}</p><pre class="snippet">${esc(e.snippet)}</pre>` : ''}`, 'error');
       if (typeof e.start === 'number') this.setMark(e.start, e.end, 'err');
+      this.setResult('error', `<p class="res-line"><span class="res-icon">✕</span> O programa tem um erro${e.line ? ` na linha ${e.line}` : ''}.</p><p class="muted">Veja a explicação em Mensagens.</p>`);
     }
 
     /* ------------------------------ Execução ----------------------------- */
@@ -353,6 +429,7 @@
       if (this.opts.resetEachRun && !keep) Turtle.resetState(this.stage.state);
       this.stage.redrawLayer();
       this.setRunning(true);
+      this.setResult('running', '<p class="res-line"><span class="res-icon">▶</span> Executando…</p><p class="muted">Acompanhe o comando destacado no editor.</p>');
       if (this.opts.onRunStart) this.opts.onRunStart(compiled);
       this.currentNode = null;
       this.stage.play(compiled.actions, {
@@ -381,6 +458,9 @@
       this.setMark(null);
       this.loopBadge.hidden = true;
       this.updateStatus();
+      const st = compiled.stats, a = compiled.analysis;
+      this.setResult('ok', `<p class="res-line"><span class="res-icon">✓</span> Programa executado com sucesso!</p>
+        <p class="res-sub">🐢 Desenho concluído · ${a.size} comando${a.size > 1 ? 's' : ''} · ${st.moves} movimento${st.moves === 1 ? '' : 's'}${a.repeatCount ? ` · ${st.loopIterations} repetições` : ''}</p>`);
       if (this.opts.onFinish) this.opts.onFinish(compiled, this.stage.state);
     }
 
@@ -390,6 +470,7 @@
       this.setMark(null);
       this.loopBadge.hidden = true;
       this.updateStatus();
+      if (was && userAction) this.setResult('stopped', '<p class="res-line"><span class="res-icon">■</span> Execução interrompida.</p>');
       if (was && userAction) this.showMessage('⏹ Execução interrompida. A tartaruga parou no último comando concluído.', 'info');
     }
 
@@ -397,7 +478,7 @@
       this.running = on;
       this.root.classList.toggle('is-running', on);
       this.$('[data-act="stop"]').disabled = !on;
-      this.$('[data-act="run"]').textContent = on ? '▶ Executar de novo' : '▶ Executar';
+      this.$('[data-act="run"] span').textContent = on ? 'Reiniciar' : 'Executar';
     }
 
     updateStatus() {

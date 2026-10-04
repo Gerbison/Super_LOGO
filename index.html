@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jornada da Tartaruga — Aprenda Programação Desenhando</title>
   <meta name="description" content="Ambiente educacional gratuito para aprender lógica de programação com uma linguagem inspirada na LOGO e na tartaruga gráfica.">
-  <meta name="theme-color" content="#0e6b58">
+  <meta name="theme-color" content="#0b2454">
   <link rel="icon" href="assets/tartaruga.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -14,31 +14,44 @@
 
   <header class="app-header">
     <a class="brand" href="#/inicio" aria-label="Jornada da Tartaruga — página inicial">
-      <span class="brand-logo" aria-hidden="true">🐢</span>
+      <img class="brand-logo" src="assets/tartaruga.svg" alt="" width="56" height="56">
       <span class="brand-text">
-        <span class="brand-title">Jornada da Tartaruga</span>
+        <span class="brand-title">Jornada da <em>Tartaruga</em></span>
         <span class="brand-sub">Aprenda programação criando desenhos</span>
       </span>
     </a>
 
-    <div class="hud" aria-label="Seu progresso">
-      <div class="hud-item" title="Nível atual">🎯 Nível <b id="hud-level">1</b><span class="hud-dim">/<span id="hud-level-total">15</span></span></div>
-      <div class="hud-item hud-progress" title="Progresso nos desafios">
-        <span class="hud-label">Progresso</span>
-        <span class="bar" id="hud-progressbar" role="progressbar" aria-label="Progresso nos desafios" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hud-bar"></i></span>
-        <b id="hud-pct">0%</b>
-      </div>
-      <div class="hud-item" title="Estrelas"><span aria-hidden="true">⭐</span><span class="sr-only">Estrelas:</span> <b id="hud-stars">0</b><span class="hud-dim">/<span id="hud-stars-total">45</span></span></div>
-      <div class="hud-item" title="Conquistas"><span aria-hidden="true">🏅</span><span class="sr-only">Conquistas:</span> <b id="hud-badges">0</b><span class="hud-dim">/<span id="hud-badges-total">11</span></span></div>
-    </div>
+    <a class="hud-level" href="#/desafios" title="Ir para o mapa de níveis">
+      <span class="hud-star" aria-hidden="true">★</span>
+      <span class="hud-level-text">
+        <b>Nível <span id="hud-level">1</span></b>
+        <small id="hud-level-name">Primeiros Passos</small>
+      </span>
+      <span class="hud-bar" id="hud-progressbar" role="progressbar" aria-label="Níveis concluídos" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hud-bar"></i></span>
+      <b class="hud-count"><span id="hud-done">0</span> / <span id="hud-level-total">15</span></b>
+    </a>
+
+    <div class="hud-stars" id="hud-stars" role="img" aria-label="Estrelas do nível"></div>
 
     <div class="header-actions">
-      <button type="button" class="btn btn-header player-chip" data-action="player" title="Trocar de jogador">👤 <span id="player-name">—</span></button>
-      <button type="button" class="btn btn-header" data-action="code">🔑 <span>Meu código</span></button>
-      <button type="button" class="btn btn-header" data-action="help">❓ <span>Ajuda</span></button>
-      <button type="button" class="btn btn-header" data-action="tutorial">📘 <span>Tutorial</span></button>
-      <button type="button" class="btn btn-header" data-action="settings">⚙️ <span>Configurações</span></button>
+      <button type="button" class="hbtn" data-action="help">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        <span>Ajuda</span>
+      </button>
+      <button type="button" class="hbtn" data-action="tutorial">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Tutorial</span>
+      </button>
+      <button type="button" class="hbtn" data-action="settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Configurações</span>
+      </button>
     </div>
+
+    <button type="button" class="avatar-btn" data-action="player" title="Meu perfil e código de progresso">
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <span class="avatar-name" id="player-name">Entrar</span>
+    </button>
   </header>
 
   <nav class="main-nav" aria-label="Seções">
@@ -48,7 +61,7 @@
     <a href="#/livre" data-nav="livre">🎨 Modo Livre</a>
     <a href="#/galeria" data-nav="galeria">🖼️ Galeria</a>
     <a href="#/comandos" data-nav="comandos">📚 Comandos</a>
-    <a href="#/conquistas" data-nav="conquistas">🏅 Conquistas</a>
+    <a href="#/conquistas" data-nav="conquistas">🏅 Conquistas<span id="nav-badges" class="nav-count"></span></a>
     <a href="#/professor" data-nav="professor">👨‍🏫 Professor</a>
   </nav>
 

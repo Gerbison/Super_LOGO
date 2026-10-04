@@ -95,18 +95,24 @@
     return { done, stars, current, total: LEVELS.length, badges: Object.keys(Store.data.achievements).length };
   }
 
+  /** Cabeçalho: nível em foco (o aberto, ou o próximo a jogar), progresso e estrelas dele. */
   function updateHUD() {
     const p = progress();
-    $('#hud-level').textContent = LEVELS[p.current].id;
+    const lvl = (currentView === 'desafio' && activeLevel && activeLevel.id !== 'custom') ? activeLevel : LEVELS[p.current];
+    $('#hud-level').textContent = lvl.id;
+    $('#hud-level-name').textContent = lvl.title;
+    $('#hud-done').textContent = p.done;
     $('#hud-level-total').textContent = p.total;
     const pct = Math.round((p.done / p.total) * 100);
-    $('#hud-bar').style.width = pct + '%';
-    $('#hud-pct').textContent = pct + '%';
+    $('#hud-bar').style.width = Math.max(pct, 3) + '%';
     $('#hud-progressbar').setAttribute('aria-valuenow', String(pct));
-    $('#hud-stars').textContent = p.stars;
-    $('#hud-stars-total').textContent = p.total * 3;
-    $('#hud-badges').textContent = p.badges;
-    $('#hud-badges-total').textContent = Achievements.ACHIEVEMENTS.length;
+    const st = Store.level(lvl.id).stars || 0;
+    const box = $('#hud-stars');
+    box.innerHTML = [1, 2, 3].map((i) => `<span class="${i <= st ? 'on' : ''}" aria-hidden="true">${i <= st ? '★' : '☆'}</span>`).join('');
+    box.setAttribute('aria-label', `Nível ${lvl.id}: ${st} de 3 estrelas. Total: ${p.stars} de ${p.total * 3}.`);
+    box.title = `Estrelas do nível ${lvl.id} · total ${p.stars}/${p.total * 3}`;
+    const nb = $('#nav-badges');
+    if (nb) nb.textContent = p.badges ? ` ${p.badges}` : '';
   }
 
   function fireEvent(name, details) {
@@ -123,9 +129,7 @@
    *  Tema e configurações
    * ===================================================================== */
   function applyTheme() {
-    const t = Store.settings.theme;
-    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-    else document.documentElement.removeAttribute('data-theme');
+    // Visual único (azul). As cores ficam todas em css/style.css (:root).
     refreshAllStages();
   }
 
@@ -165,13 +169,6 @@
         </fieldset>
         <fieldset>
           <legend>Aparência</legend>
-          <label>Tema
-            <select name="theme">
-              <option value="auto" ${s.theme === 'auto' ? 'selected' : ''}>Automático (do sistema)</option>
-              <option value="light" ${s.theme === 'light' ? 'selected' : ''}>Claro</option>
-              <option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>Escuro</option>
-            </select>
-          </label>
           <label>Tamanho da letra do editor
             <select name="fontSize">
               ${[14, 16, 18, 20, 22].map((n) => `<option value="${n}" ${+s.fontSize === n ? 'selected' : ''}>${n} px</option>`).join('')}
@@ -241,7 +238,6 @@
   $('[data-action="help"]').addEventListener('click', openHelp);
   $('[data-action="settings"]').addEventListener('click', openSettings);
   $('[data-action="tutorial"]').addEventListener('click', () => { location.hash = '#/aprender'; });
-  $('[data-action="code"]').addEventListener('click', openCodeModal);
   $('[data-action="player"]').addEventListener('click', openCodeModal);
 
   /* ===================================================================== *
@@ -252,7 +248,10 @@
   }
 
   function updatePlayer() {
-    $('#player-name').textContent = Store.data.nome || 'Sem nome';
+    const nome = Store.data.nome || '';
+    $('#player-name').textContent = nome || 'Entrar';
+    const ini = nome.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+    $('#avatar').innerHTML = ini ? esc(ini) : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>';
   }
 
   function setStatus(el, text, isError) {
@@ -758,29 +757,67 @@
     const reqs = (level.requires || []).filter((r) => r !== 'PF');
     const idx = LEVELS.indexOf(level);
 
+    const crit2 = level.repeatUseful ? 'Usou o REPITA' : 'Sem comandos sobrando';
     info.innerHTML = `
-      <a class="back-link" href="${custom ? '#/inicio' : '#/desafios'}">← ${custom ? 'Início' : 'Mapa de níveis'}</a>
-      <p class="eyebrow">${custom ? 'Desafio do professor' : `Nível ${level.id} de ${LEVELS.length}`}</p>
-      <h2 id="level-title">${level.icon} ${esc(level.title)}</h2>
-      <p class="challenge">${esc(level.challenge)}</p>
-      <figure class="target">
+      <div class="aside-head">
+        <a class="back-btn" href="${custom ? '#/inicio' : '#/desafios'}" aria-label="Voltar ${custom ? 'ao início' : 'ao mapa de níveis'}">‹</a>
+        <h2 id="level-title">${custom ? 'Desafio do Professor' : `Desafio do Nível ${level.id}`}</h2>
+      </div>
+
+      <div class="in-card challenge-card">
+        <span class="ch-icon" aria-hidden="true">${level.icon}</span>
+        <div>
+          <b class="ch-title">${esc(level.title)}</b>
+          <p class="challenge">${esc(level.challenge)}</p>
+        </div>
+      </div>
+
+      <figure class="in-card target">
         <canvas class="target-canvas" role="img" aria-label="Desenho-alvo do nível"></canvas>
         <figcaption>🎯 Desenho-alvo · <span class="start-mark" aria-hidden="true">▲</span> início da tartaruga</figcaption>
+        <ul class="chips" aria-label="Regras do desafio">
+          ${reqs.map((r) => `<li class="chip chip-req">📌 Obrigatório: ${esc(Levels.requirementLabel(r))}</li>`).join('')}
+          ${level.finalAtStart ? '<li class="chip chip-req">📍 Termine no ponto inicial</li>' : ''}
+        </ul>
+        <label class="check small"><input type="checkbox" data-ghost ${Store.settings.ghost ? 'checked' : ''}> Mostrar o alvo tracejado no mundo</label>
       </figure>
-      <ul class="chips" aria-label="Regras do desafio">
-        ${reqs.map((r) => `<li class="chip chip-req">📌 Obrigatório: ${esc(Levels.requirementLabel(r))}</li>`).join('')}
-        ${level.repeatUseful ? '<li class="chip">⭐⭐ usando REPITA</li>' : ''}
-        <li class="chip">⭐⭐⭐ com até ${level.par} comando${level.par > 1 ? 's' : ''}</li>
-        ${level.finalAtStart ? '<li class="chip chip-req">📍 Termine no ponto inicial</li>' : ''}
-      </ul>
-      ${custom ? '' : `<p class="best">Sua melhor marca: ${res.completed ? starsHTML(res.stars) + ` <small>(${res.size} comando${res.size > 1 ? 's' : ''})</small>` : '<span class="muted">ainda não concluído</span>'}</p>`}
-      <div class="hint-box">
-        <button type="button" class="btn btn-hint" data-hint>💡 Dica</button>
-        <ol class="hints" aria-live="polite"></ol>
-      </div>
-      <label class="check"><input type="checkbox" data-ghost ${Store.settings.ghost ? 'checked' : ''}> Mostrar o alvo tracejado no mundo</label>
-      ${!custom && idx > 0 ? `<a class="btn btn-sm btn-ghost" href="#/desafio/${LEVELS[idx - 1].id}">← Nível anterior</a>` : ''}`;
 
+      <details class="in-card hint-box" open>
+        <summary><span class="sec-icon" aria-hidden="true">💡</span> Dica <span class="chev" aria-hidden="true">⌄</span></summary>
+        <ol class="hints" aria-live="polite"></ol>
+        <button type="button" class="btn btn-sm btn-hint" data-hint>Mostrar dica</button>
+      </details>
+
+      <section class="in-card rewards" aria-labelledby="rw-title">
+        <h3 id="rw-title"><span class="sec-icon" aria-hidden="true">⭐</span> Recompensas</h3>
+        <div class="reward-stars" aria-hidden="true"></div>
+        <p class="reward-text"></p>
+        <ul class="reward-rules">
+          <li>★ desenho correto</li>
+          <li>★★ ${level.repeatUseful ? 'usando REPITA' : 'sem comandos sobrando'}</li>
+          <li>★★★ até ${level.par} comando${level.par > 1 ? 's' : ''}</li>
+        </ul>
+      </section>
+
+      <section class="in-card level-progress" aria-labelledby="lp-title">
+        <h3 id="lp-title"><span class="sec-icon" aria-hidden="true">🏁</span> Progresso do Nível</h3>
+        <div class="lp-body">
+          <div class="ring" role="img" aria-label="0% concluído"><span>0%</span></div>
+          <ul class="criteria">
+            <li data-crit="1"><span class="ck" aria-hidden="true"></span> Desenho correto</li>
+            <li data-crit="2"><span class="ck" aria-hidden="true"></span> ${crit2}</li>
+            <li data-crit="3"><span class="ck" aria-hidden="true"></span> Solução eficiente</li>
+          </ul>
+        </div>
+        <p class="lp-note muted small"></p>
+      </section>
+
+      <div class="aside-nav">
+        ${!custom && idx > 0 ? `<a class="btn btn-ghost" href="#/desafio/${LEVELS[idx - 1].id}" aria-label="Nível anterior">‹ Anterior</a>` : ''}
+        <a class="btn map-btn" href="#/desafios">🗺️ Mapa de Níveis</a>
+      </div>`;
+
+    updateLevelPanel(res.completed ? res.stars : 0, 'best');
     levelSession = { hints: 0, hadErrors: false, level, custom };
     updateHintButton();
     $('[data-hint]', info).addEventListener('click', showHint);
@@ -800,6 +837,29 @@
     requestAnimationFrame(() => renderTargetPreview(level));
   }
 
+  /** Atualiza Recompensas e o anel "Progresso do Nível" (0 a 3 critérios). */
+  function updateLevelPanel(stars, source) {
+    const view = $('#view-desafio');
+    const best = levelSession && levelSession.custom ? 0 : (activeLevel ? Store.level(activeLevel.id).stars || 0 : 0);
+    const rs = $('.reward-stars', view);
+    if (!rs) return;
+    rs.innerHTML = [1, 2, 3].map((i) => `<span class="${i <= best ? 'on' : ''}">${i <= best ? '★' : '☆'}</span>`).join('');
+    $('.reward-text', view).textContent = best
+      ? `Sua melhor marca: ${best} de 3 estrelas.${best < 3 ? ' Dá para melhorar!' : ' Perfeito!'}`
+      : 'Conclua o desafio para ganhar suas estrelas!';
+    const pct = Math.round((stars / 3) * 100);
+    const ring = $('.ring', view);
+    ring.style.setProperty('--p', pct);
+    ring.setAttribute('aria-label', pct + '% concluído');
+    $('span', ring).textContent = pct + '%';
+    $$('.criteria li', view).forEach((li) => {
+      const ok = stars >= +li.dataset.crit;
+      li.classList.toggle('ok', ok);
+      $('.ck', li).textContent = ok ? '✓' : '';
+    });
+    $('.lp-note', view).textContent = source === 'try' ? 'Resultado da última execução.' : (stars ? 'Sua melhor marca neste nível.' : 'Execute seu programa para medir.');
+  }
+
   function renderTargetPreview(level) {
     const c = $('#view-desafio .target-canvas');
     if (c) Turtle.renderFit(c, Levels.targetOf(level), { showStart: true, padding: 18 });
@@ -809,8 +869,8 @@
     const s = levelSession;
     const b = $('#view-desafio [data-hint]');
     const total = s.level.hints.length;
-    if (s.hints >= total) { b.textContent = '💡 Sem mais dicas'; b.disabled = true; }
-    else { b.textContent = `💡 Dica (${s.hints + 1} de ${total})`; b.disabled = false; }
+    if (s.hints >= total) { b.textContent = 'Sem mais dicas'; b.disabled = true; }
+    else { b.textContent = s.hints ? `Mais uma dica (${s.hints + 1} de ${total})` : `Mostrar dica (1 de ${total})`; b.disabled = false; }
   }
 
   function showHint() {
@@ -829,6 +889,7 @@
     fireEvent('run', { analysis: compiled.analysis });
     const result = Levels.evaluate(level, { analysis: compiled.analysis, stats: compiled.stats, state });
 
+    updateLevelPanel(result.completed ? result.stars : 0, 'try');
     if (!result.completed) {
       s.hadErrors = true;
       if (!s.custom) { Store.data.attempts[level.id] = (Store.data.attempts[level.id] || 0) + 1; Store.save(); }
@@ -845,6 +906,7 @@
     levelWS.showMessage(`<p class="msg-title">🎉 ${esc(result.title)} ${esc(level.success)}</p>`, 'success');
     if (!s.custom) {
       Store.recordLevel(level.id, result.stars, compiled.analysis.size);
+      updateLevelPanel(result.stars, 'try');
       fireEvent('levelComplete', { level, stars: result.stars, hadErrors: s.hadErrors || (Store.data.attempts[level.id] || 0) > 0 });
       updateHUD();
     }
@@ -1149,9 +1211,9 @@
         <h3 class="section-title">${esc(g)}</h3>
         <div class="cmd-grid">
           ${list.map((c) => `
-            <article class="cmd-card card">
+            <article class="cmd-card card" style="--c:${c.doc.color}">
               <div class="cmd-visual" aria-hidden="true">${c.doc.icon}</div>
-              <h4><code>${c.name}</code> <span>${esc(c.doc.title)}</span></h4>
+              <h4><code class="${c.doc.dark ? 'dark' : ''}">${c.name}</code> <span>${esc(c.doc.title)}</span></h4>
               <p>${esc(c.doc.text)}</p>
               ${c.aliases && c.aliases.length ? `<p class="muted small">Também aceito: ${c.aliases.map((a) => `<code>${a}</code>`).join(', ')}</p>` : ''}
               <p class="small">Exemplo:</p>

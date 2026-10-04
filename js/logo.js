@@ -82,6 +82,7 @@
     args: [{ name: 'passos', missing: 'PF precisa saber quantos passos a tartaruga deve andar.' }],
     doc: {
       title: 'PARA FRENTE', icon: '🐢 → → → →', group: 'Movimento',
+      color: '#16a34a', hl: '#4ade80', label: 'Para frente', short: 'PF 100', note: 'anda 100 passos',
       text: 'Faz a tartaruga andar para frente, na direção em que está olhando.',
       example: 'PF 100',
     },
@@ -94,6 +95,7 @@
     args: [{ name: 'passos', missing: 'PT precisa saber quantos passos a tartaruga deve andar para trás.' }],
     doc: {
       title: 'PARA TRÁS', icon: '← ← ← ← 🐢', group: 'Movimento',
+      color: '#9333ea', hl: '#c084fc', label: 'Para trás', short: 'PT 100', note: 'anda 100 passos para trás',
       text: 'Faz a tartaruga andar de costas, sem virar.',
       example: 'PF 100\nPT 50',
     },
@@ -106,6 +108,7 @@
     args: [{ name: 'graus', missing: 'PD precisa saber quantos graus a tartaruga deve girar para a direita.' }],
     doc: {
       title: 'PARA DIREITA', icon: '🐢 ↻', group: 'Giro',
+      color: '#2563eb', hl: '#60a5fa', label: 'Para direita', short: 'PD 90', note: 'gira 90° para a direita',
       text: 'Gira a tartaruga para a direita (sentido do relógio). O número é o ângulo em graus.',
       example: 'PD 90\nPF 100',
     },
@@ -118,6 +121,7 @@
     args: [{ name: 'graus', missing: 'PE precisa saber quantos graus a tartaruga deve girar para a esquerda.' }],
     doc: {
       title: 'PARA ESQUERDA', icon: '🐢 ↺', group: 'Giro',
+      color: '#ea580c', hl: '#fb923c', label: 'Para esquerda', short: 'PE 90', note: 'gira 90° para a esquerda',
       text: 'Gira a tartaruga para a esquerda (contra o relógio). O número é o ângulo em graus.',
       example: 'PE 90\nPF 100',
     },
@@ -130,6 +134,7 @@
     aliases: ['BAIXA', 'BAIXAR'],
     doc: {
       title: 'BAIXAR A CANETA', icon: '🐢✏️ ———', group: 'Caneta',
+      color: '#e11d48', hl: '#fb7185', label: 'Baixa a caneta', short: 'BAIXE', note: 'desenha enquanto anda',
       text: 'A tartaruga volta a desenhar enquanto anda.',
       example: 'LEVANTE\nPF 50\nBAIXE\nPF 50',
     },
@@ -141,6 +146,7 @@
     aliases: ['LEVANTA', 'LEVANTAR'],
     doc: {
       title: 'LEVANTAR A CANETA', icon: '🐢✋ · · ·', group: 'Caneta',
+      color: '#0d9488', hl: '#2dd4bf', label: 'Levanta a caneta', short: 'LEVANTE', note: 'anda sem desenhar',
       text: 'A tartaruga anda sem desenhar (como tirar o lápis do papel).',
       example: 'PF 50\nLEVANTE\nPF 50\nBAIXE\nPF 50',
     },
@@ -153,6 +159,7 @@
     aliases: ['LIMPA', 'LIMPAR'],
     doc: {
       title: 'LIMPAR', icon: '🧽 ✨', group: 'Tela',
+      color: '#7c3aed', hl: '#a78bfa', label: 'Limpa o desenho', short: 'LIMPE', note: 'apaga tudo',
       text: 'Apaga todo o desenho. A tartaruga continua onde está.',
       example: 'PF 100\nLIMPE\nPD 90\nPF 50',
     },
@@ -164,6 +171,7 @@
     aliases: ['PARACENTRO'],
     doc: {
       title: 'VOLTAR AO CENTRO', icon: '🎯 🐢↑', group: 'Tela',
+      color: '#475569', hl: '#94a3b8', label: 'Volta ao centro', short: 'CENTRO', note: 'posição inicial',
       text: 'Leva a tartaruga de volta ao meio da tela, olhando para cima, sem desenhar.',
       example: 'PF 100\nPD 90\nPF 50\nCENTRO',
     },
@@ -178,6 +186,7 @@
     block: true,
     doc: {
       title: 'REPETIR', icon: '🔁', group: 'Repetição',
+      color: '#eab308', hl: '#facc15', dark: true, label: 'Repete comandos', short: 'REPITA 4 [PF 100 PD 90]', note: 'repete 4 vezes os comandos',
       text: 'Faz a tartaruga repetir uma sequência de comandos. Os comandos repetidos ficam entre colchetes [ ].',
       example: 'REPITA 4 [PF 100 PD 90]',
     },
