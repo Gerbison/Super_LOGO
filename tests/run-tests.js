@@ -215,6 +215,61 @@ TUTORIAL.forEach((l) => test(`aula ${l.id}: exemplos executam sem erro`, () => {
 }));
 Object.values(Logo.commands).forEach((c) => test(`biblioteca: exemplo de ${c.name} executa`, () => Logo.compile(c.doc.example)));
 
+/* --------------------- Código de progresso (save) ---------------------- */
+const Progresso = require('../js/progresso.js');
+const L = Levels.LEVELS;
+function dados(nome, levels, lessons) {
+  return { nome, levels: levels || {}, lessons: lessons || {} };
+}
+
+test('código de progresso: ida e volta em outro computador', () => {
+  const origem = dados('Luíza', { 1: { completed: true, stars: 3 }, 2: { completed: true, stars: 1 }, 15: { completed: true, stars: 2 } }, { 1: true, 7: true });
+  const codigo = Progresso.gerarCodigo(origem, L, TUTORIAL);
+  assert.match(codigo, /^TAR-[0-9A-Z]{8}-[0-9A-Z]{4}$/);
+  const novo = dados('');
+  const r = Progresso.importar(novo, codigo, 'Luiza', L, TUTORIAL); // sem acento também vale
+  assert.ok(r.ok, r.motivo);
+  assert.deepStrictEqual([novo.levels[1].stars, novo.levels[2].stars, novo.levels[15].stars], [3, 1, 2]);
+  assert.ok(!novo.levels[3] && novo.lessons[1] && novo.lessons[7] && !novo.lessons[2]);
+  assert.strictEqual(novo.nome, 'Luiza');
+});
+
+test('código de progresso: nome diferente é recusado', () => {
+  const codigo = Progresso.gerarCodigo(dados('Ana', { 1: { completed: true, stars: 3 } }), L, TUTORIAL);
+  const r = Progresso.importar(dados(''), codigo, 'Pedro', L, TUTORIAL);
+  assert.ok(!r.ok && /não confere/.test(r.motivo));
+});
+
+test('código de progresso: importar nunca piora o que já existe', () => {
+  const codigo = Progresso.gerarCodigo(dados('Ana', { 1: { completed: true, stars: 1 }, 2: { completed: true, stars: 3 } }), L, TUTORIAL);
+  const aqui = dados('Ana', { 1: { completed: true, stars: 3, size: 1 } });
+  Progresso.importar(aqui, codigo, 'Ana', L, TUTORIAL);
+  assert.strictEqual(aqui.levels[1].stars, 3);
+  assert.strictEqual(aqui.levels[2].stars, 3);
+});
+
+test('código de progresso: aceita minúsculas, espaços e O/I trocados', () => {
+  const codigo = Progresso.gerarCodigo(dados('Ana', { 4: { completed: true, stars: 2 } }), L, TUTORIAL);
+  const baguncado = '  ' + codigo.toLowerCase().replace(/0/g, 'o').replace(/1/g, 'i') + ' ';
+  const r = Progresso.importar(dados(''), baguncado, 'ana', L, TUTORIAL);
+  assert.ok(r.ok, r.motivo);
+});
+
+test('código de progresso: formato inválido dá mensagem clara', () => {
+  ['', 'ALG-123-4567', 'TAR-12-AB', 'TAR-!!!!!!!!-ABCD'].forEach((c) => {
+    const r = Progresso.importar(dados(''), c, 'Ana', L, TUTORIAL);
+    assert.ok(!r.ok && r.motivo.length > 10, c);
+  });
+});
+
+test('conquistas são recuperadas ao importar (evento sync)', () => {
+  const Ach = require('../js/achievements.js');
+  const d = dados('Ana', { 5: { completed: true, stars: 3 }, 15: { completed: true, stars: 3 } });
+  d.achievements = {}; d.galleryRuns = [];
+  const ids = Ach.check('sync', {}, d).map((a) => a.id);
+  assert.ok(ids.includes('quadrado') && ids.includes('mestre') && !ids.includes('estrela'));
+});
+
 /* ------------------------------- Fractais ------------------------------- */
 test('Laboratório de Fractais: curva de Koch gera 4^n segmentos', () => {
   const s = Turtle.simulate(Fractals.kochActions(243, 3), Turtle.createState());

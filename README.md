@@ -28,6 +28,19 @@ Ambiente educacional **gratuito**, que roda **direto no navegador**, para ensina
 
 Também: erros pedagógicos (nunca "SyntaxError"), destaque do comando em execução no editor, indicador "Repetição 2 de 4", ângulo desenhado durante os giros, três velocidades, tema claro/escuro, navegação por teclado (`Ctrl+Enter` executa, `Esc` para) e layout responsivo (computador, notebook, tablet).
 
+## Salvamento e código de progresso
+
+Mesmo sistema do AlgoBot, **sem banco de dados**:
+
+- Na primeira visita o aluno digita o **nome ou apelido**. O progresso é salvo automaticamente no navegador daquele computador.
+- O botão **🔑 Meu código** (também no mapa e nas Conquistas) mostra um código curto, por exemplo `TAR-ZG000000-MSPS`. Ele **carrega todo o progresso**: as estrelas de cada nível e as aulas concluídas, assinadas pelo nome.
+- **💾 Salvar e continuar depois** manda o código para o **próprio e-mail** do aluno (abre o Gmail na web; "Usar outro programa de e-mail" usa `mailto:`).
+- Em outro computador: **"Já jogou em outro computador?"** na tela de boas-vindas, ou **📥 Importar código** na janela do código. O aluno digita o mesmo nome (acentos e maiúsculas não importam) e cola o código.
+- Importar **nunca piora** nada: cada nível fica com o melhor resultado. O código não funciona com o nome de outro aluno, então não serve para pular níveis com o código do colega.
+- O professor pode pedir o código para conferir o progresso de quem jogou sem internet.
+
+Detalhes em `js/progresso.js`: 2 bits de estrelas por nível + 1 bit por aula, em base32 sem I/L/O/U, + hash FNV-1a do nome.
+
 ## Tecnologias
 
 HTML5, CSS3, JavaScript moderno e Canvas API. **Sem backend, sem banco de dados, sem bibliotecas e sem APIs externas.** O progresso fica no `localStorage` do navegador. Funciona offline depois de carregado — e até abrindo o `index.html` direto do computador (os scripts não usam módulos ES justamente por isso).
@@ -68,6 +81,7 @@ js/tutorial.js        aulas do tutorial
 js/examples.js        exemplos da galeria
 js/achievements.js    conquistas
 js/storage.js         salvamento no localStorage
+js/progresso.js       código de progresso (continuar em outro computador)
 js/workspace.js       componente Canvas + editor + botões (reutilizado em todas as telas)
 js/app.js             telas, navegação, modais, Modo Professor
 assets/               ícone

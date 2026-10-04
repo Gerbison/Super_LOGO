@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  const { Logo, Turtle, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals } = window;
+  const { Logo, Turtle, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals, Progresso } = window;
   const LEVELS = Levels.LEVELS;
   const esc = Workspace.esc;
   const $ = (sel, el) => (el || document).querySelector(sel);
@@ -199,7 +199,7 @@
   }
 
   function resetProgress() {
-    const ok = window.confirm('Tem certeza que deseja apagar TODO o progresso?\n\nNíveis, estrelas, conquistas, aulas, códigos e desenhos salvos serão apagados. Isso não pode ser desfeito.');
+    const ok = window.confirm('Tem certeza que deseja apagar TODO o progresso deste computador?\n\nNome, níveis, estrelas, conquistas, aulas, códigos e desenhos salvos serão apagados. Se você guardou seu código de progresso, poderá recuperar as estrelas depois.');
     if (!ok) return;
     Store.reset();
     closeModal();
@@ -207,6 +207,8 @@
     toast('🗑 Progresso apagado. Uma nova jornada começa!');
     location.hash = '#/inicio';
     route(true);
+    updatePlayer();
+    setTimeout(askName, 300);
   }
 
   function openHelp() {
@@ -239,6 +241,158 @@
   $('[data-action="help"]').addEventListener('click', openHelp);
   $('[data-action="settings"]').addEventListener('click', openSettings);
   $('[data-action="tutorial"]').addEventListener('click', () => { location.hash = '#/aprender'; });
+  $('[data-action="code"]').addEventListener('click', openCodeModal);
+  $('[data-action="player"]').addEventListener('click', openCodeModal);
+
+  /* ===================================================================== *
+   *  Jogador e código de progresso (mesmo sistema do AlgoBot)
+   * ===================================================================== */
+  function myCode() {
+    return Progresso.gerarCodigo(Store.data, LEVELS, TUTORIAL);
+  }
+
+  function updatePlayer() {
+    $('#player-name').textContent = Store.data.nome || 'Sem nome';
+  }
+
+  function setStatus(el, text, isError) {
+    el.textContent = text;
+    el.className = 'form-status ' + (isError ? 'is-error' : 'is-ok');
+  }
+
+  /** Traz o progresso de um código para este computador (nunca piora nada). */
+  function importCode(code, name) {
+    const r = Progresso.importar(Store.data, code, name, LEVELS, TUTORIAL);
+    if (!r.ok) return r;
+    Store.save();
+    fireEvent('sync');
+    updatePlayer();
+    updateHUD();
+    return r;
+  }
+
+  function importedText(r) {
+    if (!r.niveis && !r.aulas) return 'Código conferido! Este computador já tinha todo esse progresso.';
+    return `Progresso trazido! ${r.niveis} nível(is) e ${r.aulas} aula(s) atualizados.`;
+  }
+
+  /** Boas-vindas: pede o nome (ou o código de outro computador). */
+  function askName() {
+    const dlg = openModal({
+      title: '🐢 Bem-vindo à Jornada da Tartaruga',
+      html: `
+        <p>Digite seu nome ou apelido. Ele fica guardado só neste computador e assina o seu <b>código de progresso</b>.</p>
+        <label class="field">Seu nome <input type="text" id="welcome-name" maxlength="24" autocomplete="off" placeholder="Seu nome"></label>
+        <p><button type="button" class="link-btn" data-toggle-code>💻 Já jogou em outro computador?</button></p>
+        <div class="code-block" hidden>
+          <label class="field">Seu código <input type="text" id="welcome-code" placeholder="${Progresso.PREFIXO}-XXXXXXXX-XXXX" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="btn" data-continue>▶ Continuar de onde parei</button>
+          <p class="form-status" aria-live="polite"></p>
+        </div>`,
+      actions: [{ label: '🚀 Começar do zero', cls: 'btn-primary', keepOpen: true, onClick: () => confirmName() }],
+    });
+    const nameEl = $('#welcome-name', dlg);
+    const status = $('.code-block .form-status', dlg);
+    nameEl.value = Store.data.nome || '';
+    setTimeout(() => nameEl.focus(), 50);
+    nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); confirmName(); } });
+    $('[data-toggle-code]', dlg).addEventListener('click', () => {
+      const b = $('.code-block', dlg);
+      b.hidden = !b.hidden;
+      if (!b.hidden) $('#welcome-code', dlg).focus();
+    });
+    $('[data-continue]', dlg).addEventListener('click', () => {
+      const name = nameEl.value.trim();
+      const code = $('#welcome-code', dlg).value.trim();
+      if (!name) { setStatus(status, 'Digite seu nome ali em cima primeiro.', true); nameEl.focus(); return; }
+      if (!code) { setStatus(status, 'Cole o código que você recebeu.', true); return; }
+      const r = importCode(code, name);
+      if (!r.ok) { setStatus(status, r.motivo, true); return; }
+      closeModal();
+      toast('🎉 ' + importedText(r));
+      route(true);
+    });
+
+    function confirmName() {
+      const name = nameEl.value.trim();
+      if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); return; }
+      Store.data.nome = name;
+      Store.save();
+      updatePlayer();
+      closeModal();
+      toast(`👋 Olá, ${esc(name)}! Seu progresso será salvo neste computador.`);
+      if (currentView === 'desafios' || currentView === 'conquistas') route(true);
+    }
+  }
+
+  /** "Meu código": ver, copiar, mandar para o próprio e-mail e importar. */
+  function openCodeModal() {
+    if (!Store.data.nome) return askName();
+    const code = myCode();
+    const dlg = openModal({
+      title: '🔑 Meu código de progresso',
+      wide: true,
+      html: `
+        <p>Este código carrega <b>todo o seu progresso</b> (estrelas de cada nível e aulas concluídas).
+        Use-o para continuar em outro computador ou para mostrar ao professor.</p>
+        <p class="player-line">Jogador: <b>${esc(Store.data.nome)}</b></p>
+        <div class="progress-code-row">
+          <output class="progress-code" aria-label="Seu código">${code}</output>
+          <button type="button" class="btn btn-sm" data-copy-code>📋 Copiar</button>
+        </div>
+        <section class="save-later">
+          <h3>💾 Salvar para continuar depois</h3>
+          <p class="muted">Manda este código para o <b>seu próprio e-mail</b>, para colar em qualquer computador mais tarde.</p>
+          <label class="field">Seu e-mail <input type="email" id="save-email" placeholder="seu-email@exemplo.com" autocomplete="email"></label>
+          <div class="custom-actions">
+            <button type="button" class="btn btn-primary" data-gmail>💾 Salvar e continuar depois</button>
+            <button type="button" class="link-btn" data-mailto>Usar outro programa de e-mail</button>
+          </div>
+          <p class="form-status save-status" aria-live="polite"></p>
+        </section>
+        <details class="import-box">
+          <summary>📥 Importar código de outro computador</summary>
+          <p class="muted">Seu progresso daqui não se perde: fica valendo o melhor resultado de cada nível.</p>
+          <div class="custom-actions">
+            <input type="text" id="import-code" class="code-field" placeholder="${Progresso.PREFIXO}-XXXXXXXX-XXXX" autocomplete="off" spellcheck="false" aria-label="Código de outro computador">
+            <button type="button" class="btn" data-import>Importar</button>
+          </div>
+          <p class="form-status import-status" aria-live="polite"></p>
+        </details>`,
+      actions: [{ label: 'Fechar', cls: 'btn-primary' }],
+      onClose: () => { if (imported) route(true); },
+    });
+    let imported = false;
+    const email = $('#save-email', dlg);
+    email.value = Store.settings.emailAluno || '';
+    $('[data-copy-code]', dlg).addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(code); toast('📋 Código copiado!'); }
+      catch (e) { toast('Selecione o código e use Ctrl+C para copiar.'); }
+    });
+    const send = (gmail) => {
+      const st = $('.save-status', dlg);
+      const to = email.value.trim();
+      if (!to) { setStatus(st, 'Digite o seu e-mail primeiro.', true); email.focus(); return; }
+      Store.settings.emailAluno = to;
+      Store.save();
+      const link = gmail ? Progresso.linkGmail(to, code, Store.data.nome) : Progresso.linkMailto(to, code, Store.data.nome);
+      if (gmail) window.open(link, '_blank', 'noopener'); else location.href = link;
+      setStatus(st, `Abrindo o e-mail para ${to}. É só clicar em Enviar.`, false);
+    };
+    $('[data-gmail]', dlg).addEventListener('click', () => send(true));
+    $('[data-mailto]', dlg).addEventListener('click', () => send(false));
+    $('[data-import]', dlg).addEventListener('click', () => {
+      const st = $('.import-status', dlg);
+      const c = $('#import-code', dlg).value.trim();
+      if (!c) { setStatus(st, 'Cole o código que você recebeu.', true); return; }
+      const r = importCode(c, Store.data.nome);
+      if (!r.ok) { setStatus(st, r.motivo, true); return; }
+      imported = true;
+      setStatus(st, importedText(r), false);
+      $('.progress-code', dlg).textContent = myCode();
+      $('#import-code', dlg).value = '';
+    });
+  }
 
   /* ===================================================================== *
    *  Roteamento
@@ -512,6 +666,11 @@
             <p class="big-number">${p.done}<small>/${p.total} níveis</small></p>
             <p><span class="stars big">★</span> ${p.stars} de ${p.total * 3} estrelas</p>
             <a class="btn btn-primary btn-block" href="#/desafio/${LEVELS[p.current].id}">▶ Jogar o nível ${LEVELS[p.current].id}</a>
+            <div class="identity">
+              <span>Jogador: <b>${esc(Store.data.nome || '—')}</b></span>
+              <span>Código: <b class="mono">${myCode()}</b></span>
+            </div>
+            <button type="button" class="btn btn-sm btn-block" data-open-code>🔑 Salvar / importar progresso</button>
           </div>
           <div class="card legend">
             <h3>Como ganhar estrelas</h3>
@@ -530,6 +689,7 @@
         </aside>
       </div>`;
     requestAnimationFrame(drawMapPath);
+    $('#view-desafios [data-open-code]').addEventListener('click', openCodeModal);
     const fc = $('#view-desafios .fractal-preview');
     const flake = Turtle.simulate(Fractals.snowflakeActions(240, 3), Turtle.createState());
     Turtle.renderFit(fc, flake.segments, { padding: 12, lineWidth: 1.5 });
@@ -1033,6 +1193,7 @@
       <div class="page-head">
         <h2>🏅 Conquistas</h2>
         <p>Cada conquista marca algo que você aprendeu a fazer.</p>
+        <p>Jogador: <b>${esc(Store.data.nome || '—')}</b> · Código: <b class="mono">${myCode()}</b></p>
       </div>
       <div class="stat-row">
         <div class="stat card"><span class="stat-num">${lessons}/${TUTORIAL.length}</span><span>aulas concluídas</span></div>
@@ -1213,6 +1374,8 @@
    *  Início do app
    * ===================================================================== */
   applyTheme();
+  updatePlayer();
   updateHUD();
   route(true);
+  if (!Store.data.nome) setTimeout(askName, 400);
 })();

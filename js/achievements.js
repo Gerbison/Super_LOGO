@@ -10,23 +10,28 @@
  *   'lesson'        {}                           aula concluída
  *   'art'           {}                           desenho salvo/exportado
  *   'gallery'       {}                           exemplo da galeria executado
+ *   'sync'          {}                           progresso importado por código
  * Os testes também podem consultar o progresso salvo (data = Store.data).
  * ========================================================================= */
 (function (root) {
   'use strict';
 
+  /* Nível concluído agora — ou já concluído, ao trazer progresso por código. */
+  const levelDone = (id) => (e, d, data) =>
+    (e === 'levelComplete' && d.level.id === id) || (e === 'sync' && !!(data.levels[id] && data.levels[id].completed));
+
   const ACHIEVEMENTS = [
     { id: 'primeiro', icon: '🐣', title: 'Primeiro comando', how: 'Execute seu primeiro programa.', test: (e) => e === 'run' },
     { id: 'aprendiz', icon: '📘', title: 'Aprendiz da Tartaruga', how: 'Conclua todas as aulas do tutorial.', test: (e, d, data) => Object.keys(data.lessons).length >= (root.TUTORIAL || []).length },
-    { id: 'quadrado', icon: '⬜', title: 'Mestre do quadrado', how: 'Conclua o nível 5 (Quadrado com REPITA).', test: (e, d) => e === 'levelComplete' && d.level.id === 5 },
-    { id: 'estrela', icon: '⭐', title: 'Criador de estrelas', how: 'Conclua o nível 8 (Estrela).', test: (e, d) => e === 'levelComplete' && d.level.id === 8 },
-    { id: 'circulo', icon: '⭕', title: 'Senhor dos círculos', how: 'Conclua o nível 9 (Círculo).', test: (e, d) => e === 'levelComplete' && d.level.id === 9 },
+    { id: 'quadrado', icon: '⬜', title: 'Mestre do quadrado', how: 'Conclua o nível 5 (Quadrado com REPITA).', test: levelDone(5) },
+    { id: 'estrela', icon: '⭐', title: 'Criador de estrelas', how: 'Conclua o nível 8 (Estrela).', test: levelDone(8) },
+    { id: 'circulo', icon: '⭕', title: 'Senhor dos círculos', how: 'Conclua o nível 9 (Círculo).', test: levelDone(9) },
     { id: 'repeticao', icon: '🔁', title: 'Mestre da repetição', how: 'Execute um programa com um REPITA dentro de outro REPITA.', test: (e, d) => e === 'run' && d.analysis.nestedRepeat },
     { id: 'persistente', icon: '💪', title: 'Persistente', how: 'Conclua um nível depois de errar pelo menos uma vez.', test: (e, d) => e === 'levelComplete' && d.hadErrors },
     { id: 'pensador', icon: '🧠', title: 'Pensador lógico', how: 'Ganhe 3 estrelas em 5 níveis.', test: (e, d, data) => Object.values(data.levels).filter((l) => l.stars >= 3).length >= 5 },
     { id: 'explorador', icon: '🧭', title: 'Explorador', how: 'Execute 5 exemplos diferentes da galeria.', test: (e, d, data) => data.galleryRuns.length >= 5 },
     { id: 'artista', icon: '🎨', title: 'Artista da Tartaruga', how: 'Salve ou compartilhe um desenho no Modo Livre.', test: (e) => e === 'art' },
-    { id: 'mestre', icon: '🏆', title: 'Mestre da Tartaruga', how: 'Conclua o nível 15.', test: (e, d) => e === 'levelComplete' && d.level.id === 15 },
+    { id: 'mestre', icon: '🏆', title: 'Mestre da Tartaruga', how: 'Conclua o nível 15.', test: levelDone(15) },
   ];
 
   /** Retorna as conquistas novas (e já as marca em data.achievements). */

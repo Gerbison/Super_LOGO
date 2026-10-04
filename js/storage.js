@@ -14,6 +14,7 @@
   function defaults() {
     return {
       version: 1,
+      nome: '',          // nome/apelido do aluno (assina o código de progresso)
       levels: {},        // { [id]: { stars, completed, size } }
       attempts: {},      // { [id]: nº de tentativas erradas antes de concluir }
       achievements: {},  // { [id]: data ISO }
@@ -60,6 +61,7 @@
       }
     },
 
+    /** Apaga tudo deste computador (inclusive o nome). Mantém só as preferências de tela. */
     reset() {
       const keepSettings = this.data.settings;
       this.data = defaults();
