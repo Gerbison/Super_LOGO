@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "tartaruga", "runtimeExecutable": "node", "runtimeArgs": ["tools/serve.js"], "port": 8080 }
+  ]
+}

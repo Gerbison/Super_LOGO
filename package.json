@@ -1,0 +1,11 @@
+{
+  "name": "jornada-da-tartaruga",
+  "version": "1.0.0",
+  "description": "Ambiente educacional para aprender programação desenhando com uma tartaruga (inspirado na LOGO).",
+  "private": true,
+  "scripts": {
+    "start": "node tools/serve.js",
+    "test": "node tests/run-tests.js"
+  },
+  "license": "MIT"
+}

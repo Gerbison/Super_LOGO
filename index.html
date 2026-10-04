@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jornada da Tartaruga — Aprenda Programação Desenhando</title>
+  <meta name="description" content="Ambiente educacional gratuito para aprender lógica de programação com uma linguagem inspirada na LOGO e na tartaruga gráfica.">
+  <meta name="theme-color" content="#0e6b58">
+  <link rel="icon" href="assets/tartaruga.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+
+  <header class="app-header">
+    <a class="brand" href="#/inicio" aria-label="Jornada da Tartaruga — página inicial">
+      <span class="brand-logo" aria-hidden="true">🐢</span>
+      <span class="brand-text">
+        <span class="brand-title">Jornada da Tartaruga</span>
+        <span class="brand-sub">Aprenda programação criando desenhos</span>
+      </span>
+    </a>
+
+    <div class="hud" aria-label="Seu progresso">
+      <div class="hud-item" title="Nível atual">🎯 Nível <b id="hud-level">1</b><span class="hud-dim">/<span id="hud-level-total">15</span></span></div>
+      <div class="hud-item hud-progress" title="Progresso nos desafios">
+        <span class="hud-label">Progresso</span>
+        <span class="bar" id="hud-progressbar" role="progressbar" aria-label="Progresso nos desafios" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hud-bar"></i></span>
+        <b id="hud-pct">0%</b>
+      </div>
+      <div class="hud-item" title="Estrelas"><span aria-hidden="true">⭐</span><span class="sr-only">Estrelas:</span> <b id="hud-stars">0</b><span class="hud-dim">/<span id="hud-stars-total">45</span></span></div>
+      <div class="hud-item" title="Conquistas"><span aria-hidden="true">🏅</span><span class="sr-only">Conquistas:</span> <b id="hud-badges">0</b><span class="hud-dim">/<span id="hud-badges-total">11</span></span></div>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn btn-header" data-action="help">❓ <span>Ajuda</span></button>
+      <button type="button" class="btn btn-header" data-action="tutorial">📘 <span>Tutorial</span></button>
+      <button type="button" class="btn btn-header" data-action="settings">⚙️ <span>Configurações</span></button>
+    </div>
+  </header>
+
+  <nav class="main-nav" aria-label="Seções">
+    <a href="#/inicio" data-nav="inicio">🏠 Início</a>
+    <a href="#/aprender" data-nav="aprender">📘 Aprender</a>
+    <a href="#/desafios" data-nav="desafios">🗺️ Desafios</a>
+    <a href="#/livre" data-nav="livre">🎨 Modo Livre</a>
+    <a href="#/galeria" data-nav="galeria">🖼️ Galeria</a>
+    <a href="#/comandos" data-nav="comandos">📚 Comandos</a>
+    <a href="#/conquistas" data-nav="conquistas">🏅 Conquistas</a>
+    <a href="#/professor" data-nav="professor">👨‍🏫 Professor</a>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <noscript><p class="card">⚠️ A Jornada da Tartaruga precisa do JavaScript ativado no navegador.</p></noscript>
+    <section id="view-inicio" class="view" aria-label="Início"></section>
+    <section id="view-aprender" class="view" aria-label="Tutorial" hidden></section>
+    <section id="view-desafios" class="view" aria-label="Mapa de desafios" hidden></section>
+    <section id="view-desafio" class="view" aria-label="Desafio" hidden></section>
+    <section id="view-livre" class="view" aria-label="Modo Livre" hidden></section>
+    <section id="view-galeria" class="view" aria-label="Galeria de exemplos" hidden></section>
+    <section id="view-comandos" class="view" aria-label="Biblioteca de comandos" hidden></section>
+    <section id="view-conquistas" class="view" aria-label="Conquistas" hidden></section>
+    <section id="view-professor" class="view" aria-label="Modo Professor" hidden></section>
+  </main>
+
+  <footer class="app-footer">
+    <p>🐢 Jornada da Tartaruga — ambiente educacional gratuito, inspirado nas ideias da linguagem LOGO. Funciona sem internet depois de carregado; o progresso fica salvo neste navegador.</p>
+  </footer>
+
+  <dialog id="modal" aria-labelledby="modal-title">
+    <div class="modal-inner">
+      <header class="modal-head">
+        <h2 id="modal-title"></h2>
+        <button type="button" class="icon-btn" id="modal-close" aria-label="Fechar">✕</button>
+      </header>
+      <div id="modal-body" class="modal-body"></div>
+      <footer id="modal-actions" class="modal-actions"></footer>
+    </div>
+  </dialog>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <!-- Ordem importa: cada arquivo usa os anteriores. Sem módulos ES para
+       funcionar também abrindo o index.html direto do computador (file://). -->
+  <script src="js/logo.js"></script>
+  <script src="js/turtle.js"></script>
+  <script src="js/checker.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/fractals.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/examples.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/workspace.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
