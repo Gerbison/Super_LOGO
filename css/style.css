@@ -717,3 +717,23 @@ input[aria-invalid="true"] { border-color: var(--red) !important; }
   .muted, .page-head p { color: #333; }
   .teacher-table details > * { display: block; }
 }
+
+/* --------------------------- Modo Professor ----------------------------- */
+.lock-wrap { display: grid; place-items: center; padding: 30px 0 50px; }
+.lock-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; text-align: center; }
+.lock-card .field { text-align: left; }
+.lock-icon { font-size: 3rem; margin: 0; }
+.solutions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
+.solution-card { display: flex; flex-direction: column; background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
+.sol-thumb { width: 100%; height: 150px; display: block; background: #fff; }
+.sol-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.sol-body h4 { margin: 0; font-size: 1.02rem; }
+.sol-body p { margin: 0; }
+.sol-body .custom-actions { margin-top: auto; padding-top: 6px; }
+.sol-body details summary { cursor: pointer; color: var(--link); font-weight: 600; }
+.sol-body ol { margin: 6px 0 0; padding-left: 1.2em; }
+.admin-solution { border: 2px solid var(--yellow); }
+.admin-solution h3 { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.admin-solution .snippet { margin-bottom: 6px; }
+body.is-admin .main-nav a[data-nav="professor"] { color: #1e293b; background: var(--yellow); border-color: var(--yellow); }
+body.is-admin .main-nav a[data-nav="professor"]::after { content: " · ativo"; font-size: 0.8em; }

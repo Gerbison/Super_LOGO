@@ -115,7 +115,48 @@
     if (nb) nb.textContent = p.badges ? ` ${p.badges}` : '';
   }
 
+  /* ===================================================================== *
+   *  Acesso do professor (senha)
+   * ---------------------------------------------------------------------
+   *  Site estático: a senha é conferida no próprio navegador, comparando o
+   *  SHA-256 do que foi digitado com o resumo abaixo (a senha em si não
+   *  fica no código). Barra o aluno comum; quem souber programar contorna.
+   *  Para trocar a senha, gere um novo resumo (ver README) e cole aqui.
+   *  O acesso vale só até fechar a aba (sessionStorage).
+   * ===================================================================== */
+  const ADMIN_SALT = 'jornada-tartaruga:professor:';
+  const ADMIN_HASH = '50b7e692e2dc18e4956d0ff38a18f5d2bb5e99dc19877952f0050d0800be1ed2';
+  const ADMIN_KEY = 'jornada-tartaruga:admin';
+
+  function isAdmin() {
+    try { return sessionStorage.getItem(ADMIN_KEY) === '1'; } catch (e) { return !!App.adminFallback; }
+  }
+
+  function setAdmin(on) {
+    try { if (on) sessionStorage.setItem(ADMIN_KEY, '1'); else sessionStorage.removeItem(ADMIN_KEY); }
+    catch (e) { App.adminFallback = on; }
+    document.body.classList.toggle('is-admin', on);
+    updateHUD();
+  }
+
+  async function sha256(text) {
+    const data = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function checkAdminPassword(pw) {
+    if (!window.crypto || !crypto.subtle) throw new Error('sem-crypto');
+    return (await sha256(ADMIN_SALT + String(pw).trim())) === ADMIN_HASH;
+  }
+
+  /** Nível liberado para jogar? (o professor vê todos, sem mexer no progresso do aluno) */
+  function canPlay(index) {
+    return isAdmin() || Store.isUnlocked(LEVELS, index);
+  }
+
   function fireEvent(name, details) {
+    if (isAdmin()) return; // no modo professor nada conta como conquista do aluno
     const got = Achievements.check(name, details || {}, Store.data);
     if (got.length) {
       Store.save();
@@ -590,7 +631,7 @@
   }
 
   function completeLesson(lesson) {
-    if (!lesson || Store.data.lessons[lesson.id]) return;
+    if (!lesson || Store.data.lessons[lesson.id] || isAdmin()) return;
     Store.data.lessons[lesson.id] = true;
     Store.save();
     toast(`✅ Aula ${lesson.id} concluída: ${esc(lesson.title)}`);
@@ -622,7 +663,7 @@
   function renderMapa() {
     const p = progress();
     const nodes = LEVELS.map((l, i) => {
-      const unlocked = Store.isUnlocked(LEVELS, i);
+      const unlocked = canPlay(i);
       const res = Store.level(l.id);
       const state = res.completed ? 'done' : unlocked ? 'open' : 'locked';
       const off = MAP_OFFSETS[(i + 1) % MAP_OFFSETS.length];
@@ -725,12 +766,15 @@
     const id = parseInt(params[0], 10);
     const idx = LEVELS.findIndex((l) => l.id === id);
     if (idx < 0) { location.hash = '#/desafios'; return; }
-    if (!Store.isUnlocked(LEVELS, idx)) {
+    if (!canPlay(idx)) {
       toast('🔒 Este nível ainda está bloqueado. Conclua o nível anterior primeiro.');
       location.hash = '#/desafios';
       return;
     }
     openLevel(LEVELS[idx], false);
+    if (params[1] === 'solucao' && isAdmin()) {
+      requestAnimationFrame(() => { levelWS.stage.resize(); showSolution(LEVELS[idx]); });
+    }
   }
 
   function ensureLevelView() {
@@ -812,6 +856,18 @@
         <p class="lp-note muted small"></p>
       </section>
 
+      ${isAdmin() ? `
+      <section class="in-card admin-solution" aria-labelledby="sol-title">
+        <h3 id="sol-title"><span class="sec-icon" aria-hidden="true">👨‍🏫</span> Solução (professor)</h3>
+        <pre class="snippet">${esc(level.solution)}</pre>
+        <p class="muted small">Meta para ⭐⭐⭐: até ${level.par} comando${level.par > 1 ? 's' : ''}. Outras soluções que gerem o mesmo desenho também valem.</p>
+        <div class="custom-actions">
+          <button type="button" class="btn btn-sm btn-primary" data-show-solution>▶ Ver resolvendo</button>
+          <button type="button" class="btn btn-sm" data-copy-solution>📋 Copiar</button>
+        </div>
+        <p class="muted small">Modo professor: o que você executar aqui não é salvo no progresso deste computador.</p>
+      </section>` : ''}
+
       <div class="aside-nav">
         ${!custom && idx > 0 ? `<a class="btn btn-ghost" href="#/desafio/${LEVELS[idx - 1].id}" aria-label="Nível anterior">‹ Anterior</a>` : ''}
         <a class="btn map-btn" href="#/desafios">🗺️ Mapa de Níveis</a>
@@ -829,12 +885,27 @@
     });
 
     activeLevel = level;
-    levelWS.opts.storageKey = custom ? null : 'nivel-' + level.id;
+    const admin = isAdmin();
+    // no modo professor o editor não grava por cima do código do aluno
+    levelWS.opts.storageKey = custom || admin ? null : 'nivel-' + level.id;
     levelWS.setCode(custom ? '' : Store.code('nivel-' + level.id, ''));
+    if (admin) {
+      $('[data-show-solution]', info).addEventListener('click', () => showSolution(level));
+      $('[data-copy-solution]', info).addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(level.solution); toast('📋 Solução copiada.'); }
+        catch (e) { toast('Selecione o código e use Ctrl+C.'); }
+      });
+    }
     levelWS.resetWorld();
     levelWS.stage.setOption('viewHalf', 260);
     levelWS.stage.setGhost(Levels.targetOf(level));
     requestAnimationFrame(() => renderTargetPreview(level));
+  }
+
+  /** Modo professor: coloca a solução no editor e executa devagar. */
+  function showSolution(level) {
+    levelWS.setCode(level.solution);
+    levelWS.run({ speed: 'normal' });
   }
 
   /** Atualiza Recompensas e o anel "Progresso do Nível" (0 a 3 critérios). */
@@ -892,7 +963,7 @@
     updateLevelPanel(result.completed ? result.stars : 0, 'try');
     if (!result.completed) {
       s.hadErrors = true;
-      if (!s.custom) { Store.data.attempts[level.id] = (Store.data.attempts[level.id] || 0) + 1; Store.save(); }
+      if (!s.custom && !isAdmin()) { Store.data.attempts[level.id] = (Store.data.attempts[level.id] || 0) + 1; Store.save(); }
       const sim = result.compare ? Math.round(Levels.similarity(result.compare) * 100) : null;
       const encourage = s.hints < level.hints.length ? ' Se quiser, peça uma 💡 dica.' : '';
       levelWS.showMessage(`
@@ -903,6 +974,10 @@
       return;
     }
 
+    if (isAdmin()) {
+      levelWS.showMessage(`<p class="msg-title">✅ A solução confere: ${result.stars} de 3 estrelas.</p><p class="muted">Modo professor: nada foi salvo no progresso deste computador.</p>`, 'success');
+      return;
+    }
     levelWS.showMessage(`<p class="msg-title">🎉 ${esc(result.title)} ${esc(level.success)}</p>`, 'success');
     if (!s.custom) {
       Store.recordLevel(level.id, result.stars, compiled.analysis.size);
@@ -1303,6 +1378,7 @@
 
   function renderProfessor() {
     const view = $('#view-professor');
+    if (!isAdmin()) return renderProfessorLock(view);
     const rows = LEVELS.map((l) => `
       <tr>
         <th scope="row">${l.icon} ${l.id}. ${esc(l.title)}</th>
@@ -1317,9 +1393,34 @@
     view.innerHTML = `
       <div class="page-head">
         <h2>👨‍🏫 Modo Professor</h2>
-        <p>Visão pedagógica da jornada, sugestões para a sala de aula e ferramentas para criar desafios.</p>
-        <button type="button" class="btn btn-sm no-print" data-print>🖨️ Imprimir esta página</button>
+        <p>Visão pedagógica da jornada, todas as fases com as soluções, sugestões para a sala de aula e ferramentas para criar desafios.</p>
+        <p class="custom-actions no-print">
+          <button type="button" class="btn btn-sm" data-print>🖨️ Imprimir esta página</button>
+          <button type="button" class="btn btn-sm btn-danger" data-logout>🔒 Sair do modo professor</button>
+        </p>
       </div>
+
+      <section class="card" aria-labelledby="all-levels-title">
+        <h3 id="all-levels-title">🗝️ Todas as fases e soluções</h3>
+        <p class="muted">Enquanto o modo professor estiver ativo (até fechar esta aba), todas as fases ficam abertas e cada desafio mostra a solução. Nada do que você executar é salvo no progresso deste computador.</p>
+        <div class="solutions-grid">
+          ${LEVELS.map((l) => `
+            <article class="solution-card">
+              <canvas class="sol-thumb" data-level="${l.id}" role="img" aria-label="Desenho-alvo do nível ${l.id}"></canvas>
+              <div class="sol-body">
+                <h4>${l.icon} ${l.id}. ${esc(l.title)}</h4>
+                <p class="small">${esc(l.challenge)}</p>
+                <pre class="snippet small">${esc(l.solution)}</pre>
+                <p class="muted small">⭐⭐⭐ até ${l.par} comando${l.par > 1 ? 's' : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
+                <details class="small"><summary>Dicas do nível</summary><ol>${l.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ol></details>
+                <div class="custom-actions">
+                  <a class="btn btn-sm btn-primary" href="#/desafio/${l.id}/solucao">▶ Ver resolvendo</a>
+                  <a class="btn btn-sm" href="#/desafio/${l.id}">Abrir fase</a>
+                </div>
+              </div>
+            </article>`).join('')}
+        </div>
+      </section>
 
       <section class="card">
         <h3>🎯 Objetivo e progressão</h3>
@@ -1389,6 +1490,15 @@
     Turtle.renderFit(fc, Turtle.simulate(Fractals.snowflakeActions(240, 3), Turtle.createState()).segments, { padding: 12, lineWidth: 1.5 });
 
     $('[data-print]', view).addEventListener('click', () => window.print());
+    $('[data-logout]', view).addEventListener('click', () => {
+      setAdmin(false);
+      toast('🔒 Modo professor encerrado.');
+      route(true);
+    });
+    requestAnimationFrame(() => $$('.sol-thumb', view).forEach((c) => {
+      const lvl = LEVELS.find((l) => l.id === +c.dataset.level);
+      Turtle.renderFit(c, Levels.targetOf(lvl), { showStart: true, padding: 10 });
+    }));
     $('[data-reset]', view).addEventListener('click', resetProgress);
     $('[data-unlock]', view).addEventListener('change', (e) => {
       Store.data.unlockAll = e.target.checked;
@@ -1398,6 +1508,39 @@
     });
     $$('[data-tc]', view).forEach((b) => b.addEventListener('click', () => openInFree(TEACHER_CHALLENGES[+b.dataset.tc].code)));
     $('[data-make]', view).addEventListener('click', makeCustomChallenge);
+  }
+
+  /** Tela de senha da aba Professor. */
+  function renderProfessorLock(view) {
+    view.innerHTML = `
+      <div class="lock-wrap">
+        <form class="card lock-card" onsubmit="return false">
+          <p class="lock-icon" aria-hidden="true">🔒</p>
+          <h2>Área do Professor</h2>
+          <p class="muted">Aqui ficam todas as fases com as soluções e as ferramentas do professor. Digite a senha para entrar.</p>
+          <label class="field">Senha <input type="password" id="admin-pass" autocomplete="current-password" inputmode="numeric"></label>
+          <button type="submit" class="btn btn-primary btn-block" data-login>Entrar</button>
+          <p class="form-status" aria-live="polite"></p>
+        </form>
+      </div>`;
+    const input = $('#admin-pass', view);
+    const st = $('.form-status', view);
+    setTimeout(() => input.focus(), 50);
+    $('.lock-card', view).addEventListener('submit', async () => {
+      if (!input.value.trim()) { setStatus(st, 'Digite a senha.', true); input.focus(); return; }
+      try {
+        if (await checkAdminPassword(input.value)) {
+          setAdmin(true);
+          toast('👨‍🏫 Modo professor ativo: todas as fases e soluções liberadas.');
+          route(true);
+        } else {
+          setStatus(st, 'Senha incorreta.', true);
+          input.select();
+        }
+      } catch (e) {
+        setStatus(st, 'Este navegador não conseguiu conferir a senha. Abra o jogo pelo site (https).', true);
+      }
+    });
   }
 
   function makeCustomChallenge() {
@@ -1437,6 +1580,7 @@
    *  Início do app
    * ===================================================================== */
   applyTheme();
+  document.body.classList.toggle('is-admin', isAdmin());
   updatePlayer();
   updateHUD();
   route(true);

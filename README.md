@@ -41,6 +41,23 @@ Mesmo sistema do AlgoBot, **sem banco de dados**:
 
 Detalhes em `js/progresso.js`: 2 bits de estrelas por nível + 1 bit por aula, em base32 sem I/L/O/U, + hash FNV-1a do nome.
 
+## Acesso do professor (senha)
+
+A aba **👨‍🏫 Professor** pede senha. Depois de entrar (vale até fechar a aba do navegador):
+
+- **🗝️ Todas as fases e soluções:** desenho-alvo, código da solução, meta de estrelas e dicas de cada nível, com os botões **▶ Ver resolvendo** (a tartaruga desenha a solução sozinha) e **Abrir fase**.
+- Todas as fases ficam abertas no mapa, e cada desafio mostra o cartão **Solução (professor)**.
+- **Nada do que o professor executa é salvo** no progresso, nas conquistas ou no código do aluno daquele computador.
+- **🔒 Sair do modo professor** volta tudo ao normal.
+
+Como o site não tem servidor, a senha é conferida no navegador comparando o SHA-256 do que foi digitado com um resumo gravado em `js/app.js` (`ADMIN_HASH`). A senha em si não aparece no código. Isso barra o aluno comum, mas não é segurança de verdade: quem souber programar consegue contornar.
+
+Para trocar a senha, gere o novo resumo e cole em `ADMIN_HASH`:
+
+```bash
+node -e "console.log(require('crypto').createHash('sha256').update('jornada-tartaruga:professor:' + 'NOVA_SENHA').digest('hex'))"
+```
+
 ## Tecnologias
 
 HTML5, CSS3, JavaScript moderno e Canvas API. **Sem backend, sem banco de dados, sem bibliotecas e sem APIs externas.** O progresso fica no `localStorage` do navegador. Funciona offline depois de carregado — e até abrindo o `index.html` direto do computador (os scripts não usam módulos ES justamente por isso).
