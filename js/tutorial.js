@@ -109,6 +109,65 @@ PD 90</pre></div>
         compare: 'Python:\nfor volta in range(4):\n    frente(100)\n    direita(90)\n\nJavaScript:\nfor (let volta = 0; volta < 4; volta++) {\n  frente(100); direita(90);\n}',
       },
     },
+    /* ---------- Pergaminhos avançados (preparam os Reinos 5 e 6) ---------- */
+    {
+      id: 8, emoji: '🔢', title: 'O Número da Volta (REPCONT)', avancada: true,
+      html: `
+        <p class="note">📜 Pergaminho do Reino 5 — Mestre da Matriz.</p>
+        <p>Dentro de um <code>REPITA</code>, a palavra <code>REPCONT</code> vale o <b>número da volta atual</b>: 1 na primeira, 2 na segunda, 3 na terceira...</p>
+        <p>Com ela dá para fazer contas: <code>PF REPCONT * 5</code> anda 5, depois 10, depois 15... Use <code>+ - * /</code> e parênteses.</p>`,
+      code: 'REPITA 40 [PF REPCONT * 5 PD 90]',
+      task: 'Execute e veja a espiral crescer. Depois troque o 90 por 91.',
+      tries: [{ code: 'REPITA 40 [PF REPCONT * 5 PD 90]' }, { code: 'REPITA 60 [PF REPCONT * 3 PD 91]' }, { code: 'REPITA 72 [PF REPCONT / 2 PD 15]' }],
+      concept: {
+        title: '🔢 O contador do laço',
+        text: 'Toda linguagem tem um jeito de saber em que volta o laço está. Em outras linguagens ele costuma se chamar <b>i</b>:',
+        code: 'REPITA 40 [PF REPCONT * 5 PD 90]',
+        compare: 'Python:\nfor i in range(1, 41):\n    frente(i * 5)\n    direita(90)',
+      },
+    },
+    {
+      id: 9, emoji: '📜', title: 'Criando Comandos (PARA … FIM)', avancada: true,
+      html: `
+        <p class="note">📜 Pergaminho do Reino 5 — Mestre da Matriz.</p>
+        <p>Você pode <b>ensinar comandos novos</b> à tartaruga com <code>PARA</code> <i>nome</i> ... <code>FIM</code>.</p>
+        <p>Valores com dois-pontos, como <code>:LADO</code>, são <b>parâmetros</b>: cada vez que o comando é usado, recebe um número diferente.</p>
+        <pre class="snippet">PARA QUADRADO :LADO
+  REPITA 4 [PF :LADO PD 90]
+FIM
+QUADRADO 50
+QUADRADO 100</pre>`,
+      code: 'PARA QUADRADO :LADO\n  REPITA 4 [PF :LADO PD 90]\nFIM\nQUADRADO 50\nQUADRADO 100\nQUADRADO 150',
+      task: 'Execute e depois crie um TRIANGULO :LADO.',
+      tries: [
+        { code: 'PARA QUADRADO :LADO\n  REPITA 4 [PF :LADO PD 90]\nFIM\nREPITA 8 [QUADRADO 80 PD 45]', label: '8 quadrados girando' },
+        { code: 'PARA POLIGONO :N :LADO\n  REPITA :N [PF :LADO PD 360 / :N]\nFIM\nPOLIGONO 3 100\nPOLIGONO 5 80\nPOLIGONO 8 50', label: 'polígono de N lados' },
+      ],
+      concept: {
+        title: '📜 Procedimentos (funções)',
+        text: 'Dar nome a um pedaço de código e reaproveitá-lo é uma das ideias mais poderosas da programação. Em outras linguagens chama-se <b>função</b>:',
+        compare: 'Python:\ndef quadrado(lado):\n    for i in range(4):\n        frente(lado)\n        direita(90)\n\nquadrado(50)\nquadrado(100)',
+      },
+    },
+    {
+      id: 10, emoji: '🌀', title: 'Decidir e Recursão (SE, PARE)', avancada: true,
+      html: `
+        <p class="note">📜 Pergaminho do Reino 6 — O Iluminado do Dao.</p>
+        <p><code>SE</code> <i>condição</i> <code>[ ... ]</code> só executa o bloco quando a condição é verdadeira. Comparações: <code>=  &lt;  &gt;  &lt;=  &gt;=  &lt;&gt;</code>. Pode ter <code>SENAO [ ... ]</code>.</p>
+        <p><code>PARE</code> encerra o procedimento na hora.</p>
+        <p>Um procedimento pode <b>chamar a si mesmo</b> com um valor menor: isso é <b>recursão</b>. O <code>SE ... [PARE]</code> é a condição de parada — sem ela, nunca terminaria!</p>`,
+      code: 'PARA ESPIRAL :T\n  SE :T > 150 [PARE]\n  PF :T PD 90\n  ESPIRAL :T + 8\nFIM\nESPIRAL 8',
+      task: 'Execute e depois experimente a árvore.',
+      tries: [
+        { code: 'PARA ARVORE :T :N\n  SE :N = 0 [PARE]\n  PF :T PE 30\n  ARVORE :T * 0.7 :N - 1\n  PD 60\n  ARVORE :T * 0.7 :N - 1\n  PE 30 PT :T\nFIM\nLEVANTE PT 120 BAIXE\nARVORE 80 5', label: 'árvore recursiva' },
+        { code: 'PARA DEGRAU :N\n  SE :N = 0 [PARE]\n  PF 20 PD 90 PF 20 PE 90\n  DEGRAU :N - 1\nFIM\nDEGRAU 8', label: 'escada recursiva' },
+      ],
+      concept: {
+        title: '🌀 Recursividade',
+        text: 'Recursão é resolver um problema usando uma versão menor do mesmo problema. Os fractais (Koch, Sierpinski, árvores) são desenhados assim.',
+        compare: 'Python:\ndef espiral(t):\n    if t > 150:\n        return\n    frente(t)\n    direita(90)\n    espiral(t + 8)',
+      },
+    },
   ];
 
   root.TUTORIAL = TUTORIAL;

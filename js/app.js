@@ -9,13 +9,17 @@
 (function () {
   'use strict';
 
-  const { Logo, Turtle, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals, Progresso } = window;
-  const LEVELS = Levels.LEVELS;
+  const { Logo, Turtle, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals, Progresso, Cultivo } = window;
+  const LEVELS = Levels.LEVELS;              // por id (progresso e código TAR2)
+  const JORNADA = Cultivo.orderedLevels();   // na ordem dos reinos (o que o aluno vê)
   const esc = Workspace.esc;
   const $ = (sel, el) => (el || document).querySelector(sel);
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
 
   Store.load();
+  // Progresso antigo (15 níveis): marca em silêncio os reinos já rompidos.
+  Cultivo.registrarRompimentos(Store.data);
+  Store.save();
 
   const App = {
     workspaces: [],
@@ -53,6 +57,7 @@
     $('#modal-title').innerHTML = title;
     $('#modal-body').innerHTML = html;
     dlg.classList.toggle('wide', !!wide);
+    dlg.classList.remove('celebrate', 'breakthrough-modal');
     const foot = $('#modal-actions');
     foot.innerHTML = '';
     (actions || [{ label: 'Fechar', cls: 'btn-primary' }]).forEach((a) => {
@@ -76,41 +81,52 @@
   function closeModal() {
     const dlg = $('#modal');
     if (dlg.open) dlg.close();
+    runOnClose(); // não depende do evento "close" (que pode atrasar)
   }
 
-  $('#modal').addEventListener('close', () => {
+  /** Executa (uma única vez) o que foi pedido para depois de fechar a janela. */
+  function runOnClose() {
     const dlg = $('#modal');
     if (dlg._onClose) { const f = dlg._onClose; dlg._onClose = null; f(); }
-  });
+  }
+
+  $('#modal').addEventListener('close', runOnClose); // Esc ou fechamento pelo navegador
   $('#modal-close').addEventListener('click', closeModal);
 
   /* ===================================================================== *
    *  Progresso, HUD e conquistas
    * ===================================================================== */
   function progress() {
-    const done = LEVELS.filter((l) => Store.level(l.id).completed).length;
-    const stars = LEVELS.reduce((s, l) => s + (Store.level(l.id).stars || 0), 0);
-    let current = LEVELS.findIndex((l, i) => Store.isUnlocked(LEVELS, i) && !Store.level(l.id).completed);
-    if (current < 0) current = LEVELS.length - 1;
-    return { done, stars, current, total: LEVELS.length, badges: Object.keys(Store.data.achievements).length };
+    const done = JORNADA.filter((l) => Store.level(l.id).completed).length;
+    const stars = JORNADA.reduce((s, l) => s + (Store.level(l.id).stars || 0), 0);
+    const next = Cultivo.proximo(Store.data) || JORNADA[JORNADA.length - 1];
+    return { done, stars, next, total: JORNADA.length, badges: Object.keys(Store.data.achievements).length };
   }
 
-  /** Cabeçalho: nível em foco (o aberto, ou o próximo a jogar), progresso e estrelas dele. */
+  /** Rótulo curto de um desafio: "Desafio 9". */
+  function nomeDesafio(level) {
+    return `Desafio ${Cultivo.numero(level.id)}`;
+  }
+
+  /** Cabeçalho: reino de cultivo, estágio, título marcial, barra de Qi e estrelas do desafio em foco. */
   function updateHUD() {
     const p = progress();
-    const lvl = (currentView === 'desafio' && activeLevel && activeLevel.id !== 'custom') ? activeLevel : LEVELS[p.current];
-    $('#hud-level').textContent = lvl.id;
-    $('#hud-level-name').textContent = lvl.title;
-    $('#hud-done').textContent = p.done;
-    $('#hud-level-total').textContent = p.total;
-    const pct = Math.round((p.done / p.total) * 100);
-    $('#hud-bar').style.width = Math.max(pct, 3) + '%';
-    $('#hud-progressbar').setAttribute('aria-valuenow', String(pct));
+    const sit = Cultivo.situacao(Store.data);
+    const card = $('#hud-realm-card');
+    card.style.setProperty('--aura', sit.reino.corAura);
+    $('#hud-insignia').textContent = sit.reino.icone;
+    $('#hud-realm').textContent = `Reino ${sit.reino.id}: ${sit.reino.nome}`;
+    $('#hud-stage').textContent = sit.completo ? `Grande Perfeição · ${sit.titulo}` : `${sit.estagio.nome} · ${sit.titulo}`;
+    $('#hud-qi').style.width = Math.max(sit.qi, 3) + '%';
+    $('#hud-qi-pct').textContent = sit.qi + '%';
+    $('#hud-qibar').setAttribute('aria-valuenow', String(sit.qi));
+    card.setAttribute('aria-label', `Reino ${sit.reino.id}: ${sit.reino.nome}, ${sit.estagio.nome}. Título: ${sit.titulo}. Energia espiritual (Qi) ${sit.qi}% até o rompimento.`);
+    const lvl = (currentView === 'desafio' && activeLevel && activeLevel.id !== 'custom') ? activeLevel : p.next;
     const st = Store.level(lvl.id).stars || 0;
     const box = $('#hud-stars');
     box.innerHTML = [1, 2, 3].map((i) => `<span class="${i <= st ? 'on' : ''}" aria-hidden="true">${i <= st ? '★' : '☆'}</span>`).join('');
-    box.setAttribute('aria-label', `Nível ${lvl.id}: ${st} de 3 estrelas. Total: ${p.stars} de ${p.total * 3}.`);
-    box.title = `Estrelas do nível ${lvl.id} · total ${p.stars}/${p.total * 3}`;
+    box.setAttribute('aria-label', `${nomeDesafio(lvl)}: ${st} de 3 estrelas. Total: ${p.stars} de ${p.total * 3}.`);
+    box.title = `Estrelas do ${nomeDesafio(lvl).toLowerCase()} · total ${p.stars}/${p.total * 3}`;
     const nb = $('#nav-badges');
     if (nb) nb.textContent = p.badges ? ` ${p.badges}` : '';
   }
@@ -150,9 +166,9 @@
     return (await sha256(ADMIN_SALT + String(pw).trim())) === ADMIN_HASH;
   }
 
-  /** Nível liberado para jogar? (o professor vê todos, sem mexer no progresso do aluno) */
-  function canPlay(index) {
-    return isAdmin() || Store.isUnlocked(LEVELS, index);
+  /** Desafio liberado para jogar? (o professor vê todos, sem mexer no progresso do aluno) */
+  function canPlay(levelId) {
+    return isAdmin() || Cultivo.levelUnlocked(Store.data, levelId);
   }
 
   function fireEvent(name, details) {
@@ -251,7 +267,9 @@
 
   function openHelp() {
     const rows = Object.values(Logo.commands).map((c) =>
-      `<tr><th scope="row"><code>${c.name}${c.args.length ? ' n' : ''}${c.block ? ' [ ]' : ''}</code></th><td>${esc(c.doc.text)}</td><td><code>${esc(c.doc.example.split('\n')[0])}</code></td></tr>`).join('');
+      `<tr><th scope="row"><code>${c.name}${c.args.length ? ' n' : ''}${c.block ? ' [ ]' : ''}</code></th><td>${esc(c.doc.text)}</td><td><code>${esc(c.doc.example.split('\n')[0])}</code></td></tr>`).join('') +
+      Logo.KEYWORD_DOCS.map((d) =>
+        `<tr><th scope="row"><code>${esc(d.name)}</code><br><small class="muted">Reino 5+</small></th><td>${esc(d.text)}</td><td><code>${esc(d.short.split('\n')[0])}</code></td></tr>`).join('');
     openModal({
       title: '❓ Ajuda',
       wide: true,
@@ -304,6 +322,7 @@
   function importCode(code, name) {
     const r = Progresso.importar(Store.data, code, name, LEVELS, TUTORIAL);
     if (!r.ok) return r;
+    Cultivo.registrarRompimentos(Store.data); // rompimentos trazidos pelo código (sem celebração)
     Store.save();
     fireEvent('sync');
     updatePlayer();
@@ -494,6 +513,7 @@
             <p class="eyebrow">Lógica de programação · Ensino Médio Técnico</p>
             <h2>Vou aprender programação controlando uma tartaruga.</h2>
             <p class="lead">Escreva comandos, veja a tartaruga desenhar, observe o resultado e corrija. É assim que programadores de verdade trabalham.</p>
+            <p class="lead small-lead">☯️ <b>O Dao dos Algoritmos:</b> atravesse 6 reinos de cultivo — do Primeiro Traço ao Iluminado do Dao — rompendo o gargalo de cada um.</p>
             <ol class="cycle" aria-label="Ciclo de aprendizagem">
               <li><span aria-hidden="true">✍️</span> Eu escrevo o comando</li>
               <li><span aria-hidden="true">🐢</span> A tartaruga executa</li>
@@ -517,10 +537,10 @@
 
         <h2 class="section-title">Sua jornada</h2>
         <ol class="journey">
-          <li><a href="#/aprender" class="journey-step"><span class="j-icon">📘</span><b>Aprender</b><small>7 aulas curtas sobre os comandos</small></a></li>
+          <li><a href="#/aprender" class="journey-step"><span class="j-icon">📘</span><b>Aprender</b><small>${TUTORIAL.length} aulas curtas sobre os comandos</small></a></li>
           <li><a href="#/comandos" class="journey-step"><span class="j-icon">🧪</span><b>Experimentar</b><small>Biblioteca de comandos com exemplos</small></a></li>
-          <li><a href="#/desafios" class="journey-step"><span class="j-icon">🧩</span><b>Resolver desafios</b><small>15 níveis com desenhos-alvo</small></a></li>
-          <li><a href="#/conquistas" class="journey-step"><span class="j-icon">🏅</span><b>Conquistar níveis</b><small>Estrelas e conquistas</small></a></li>
+          <li><a href="#/desafios" class="journey-step"><span class="j-icon">🧩</span><b>Resolver desafios</b><small>${JORNADA.length} desafios em 6 reinos de cultivo</small></a></li>
+          <li><a href="#/conquistas" class="journey-step"><span class="j-icon">☯️</span><b>Romper reinos</b><small>O Dao dos Algoritmos: estrelas, Qi e rompimentos</small></a></li>
           <li><a href="#/galeria" class="journey-step"><span class="j-icon">🎨</span><b>Criar</b><small>Galeria: o que posso criar?</small></a></li>
           <li><a href="#/livre" class="journey-step"><span class="j-icon">🚀</span><b>Programar livremente</b><small>Modo Livre, sem regras</small></a></li>
         </ol>`;
@@ -528,8 +548,8 @@
     }
     const cont = $('#hero-continue');
     if (p.done > 0) {
-      cont.href = '#/desafio/' + LEVELS[p.current].id;
-      cont.textContent = `▶ Continuar: nível ${LEVELS[p.current].id}`;
+      cont.href = '#/desafio/' + p.next.id;
+      cont.textContent = `▶ Continuar: ${nomeDesafio(p.next).toLowerCase()}`;
     }
     playHero();
   }
@@ -625,6 +645,7 @@
       activeLesson = lesson;
       lessonWS.opts.storageKey = 'aula-' + lesson.id;
       lessonWS.stage.opts.colorIterations = !!lesson.colorIterations;
+      lessonWS.setAdvanced(!!lesson.avancada);
       lessonWS.setCode(Store.code('aula-' + lesson.id, lesson.code));
       lessonWS.resetWorld();
     }
@@ -658,54 +679,84 @@
   /* ===================================================================== *
    *  DESAFIOS — mapa de níveis
    * ===================================================================== */
-  const MAP_OFFSETS = [0, 70, 120, 70, 0, -70, -120, -70];
+  /** Cartão de um desafio dentro do mapa dos reinos. */
+  function levelCard(id, open, nextId) {
+    const l = Levels.byId(id);
+    const res = Store.level(id);
+    const state = res.completed ? 'done' : open ? 'open' : 'locked';
+    const n = Cultivo.numero(id);
+    const label = `Desafio ${n}: ${l.title}. ` + (state === 'done' ? `Concluído com ${res.stars} de 3 estrelas.` : state === 'open' ? 'Disponível.' : 'Selado.');
+    const inner = `
+      <span class="lvl-num" aria-hidden="true">${n}</span>
+      <span class="lvl-icon" aria-hidden="true">${state === 'locked' ? '🔒' : l.icon}</span>
+      <span class="lvl-text" aria-hidden="true">
+        <b>${esc(l.title)}</b>
+        <small>${esc(l.shape || '')}</small>
+        <span class="lvl-state">${state === 'done' ? `<span class="stars">${starsText(res.stars)}</span>` : state === 'open' ? '▶ Cultivar' : '🔒 Selado'}</span>
+      </span>`;
+    const cls = `lvl-card ${state}${id === nextId && state === 'open' ? ' current' : ''}${l.limit ? ' limited' : ''}`;
+    return state === 'locked'
+      ? `<div class="${cls}" role="img" aria-label="${esc(label)}">${inner}</div>`
+      : `<a class="${cls}" href="#/desafio/${id}" aria-label="${esc(label)}">${inner}</a>`;
+  }
 
   function renderMapa() {
     const p = progress();
-    const nodes = LEVELS.map((l, i) => {
-      const unlocked = canPlay(i);
-      const res = Store.level(l.id);
-      const state = res.completed ? 'done' : unlocked ? 'open' : 'locked';
-      const off = MAP_OFFSETS[(i + 1) % MAP_OFFSETS.length];
-      const label = `Nível ${l.id}: ${l.title}. ` + (state === 'done' ? `Concluído com ${res.stars} de 3 estrelas.` : state === 'open' ? 'Disponível.' : 'Bloqueado.');
-      const inner = `<span class="node-icon" aria-hidden="true">${state === 'locked' ? '🔒' : l.icon}</span>`;
+    const sit = Cultivo.situacao(Store.data);
+    const reinos = Cultivo.REINOS.map((r) => {
+      const ks = r.subEstagios.map((st) => Cultivo.STAGES.findIndex((x) => x.estagio === st));
+      const rompido = Cultivo.reinoRompido(Store.data, r.id);
+      const aberto = ks.some((k) => isAdmin() || Cultivo.stageUnlocked(Store.data, k));
+      const ids = r.subEstagios.flatMap((st) => st.desafiosIds);
+      const feitos = ids.filter((id) => Store.level(id).completed).length;
+      const qi = Math.round((feitos / ids.length) * 100);
+      const estado = rompido ? 'rompido' : aberto ? 'aberto' : 'selado';
       return `
-        <li class="map-node ${state}${i === p.current && state === 'open' ? ' current' : ''}" style="--off:${off}px">
-          ${state === 'locked'
-            ? `<span class="node-btn" aria-disabled="true" role="img" aria-label="${esc(label)}">${inner}</span>`
-            : `<a class="node-btn" href="#/desafio/${l.id}" aria-label="${esc(label)}">${inner}</a>`}
-          <div class="node-text" aria-hidden="true">
-            <b>Nível ${l.id}</b> <span>${esc(l.title)}</span>
-            <small>${state === 'done' ? `<span class="stars">${starsText(res.stars)}</span>` : state === 'open' ? '▶ Jogar' : '🔒 Bloqueado'}</small>
+        <section class="realm realm-${estado}${sit.reino.id === r.id ? ' realm-current' : ''}" style="--aura:${r.corAura}" aria-labelledby="realm-${r.id}">
+          <header class="realm-head">
+            <span class="realm-seal" aria-hidden="true">${estado === 'selado' ? '🔒' : r.icone}</span>
+            <div class="realm-title">
+              <p class="realm-kicker">Reino ${r.id} · ${esc(r.subtitulo)}</p>
+              <h3 id="realm-${r.id}">${esc(r.nome)}</h3>
+              <p class="realm-desc">${esc(r.descricao)}</p>
+              <p class="realm-focus"><b>Foco:</b> ${esc(r.foco)}</p>
+            </div>
+            <div class="realm-status">
+              <span class="realm-badge">${rompido ? '✨ Rompido' : aberto ? '🔥 Em cultivo' : '🔒 Selado'}</span>
+              <span class="qi-line"><span class="qi-label">Qi</span>
+                <span class="qi-bar" role="progressbar" aria-label="Energia espiritual do Reino ${r.id}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${qi}"><i style="width:${Math.max(qi, 2)}%"></i></span>
+                <b>${qi}%</b></span>
+              <small>${feitos}/${ids.length} desafios${rompido ? ' · título: ' + esc(r.titulo) : ''}</small>
+            </div>
+          </header>
+          <div class="realm-stages">
+            ${r.subEstagios.map((st, j) => {
+              const open = isAdmin() || Cultivo.stageUnlocked(Store.data, ks[j]);
+              return `
+                <div class="stage stage-${st.tipo.toLowerCase()}${open ? '' : ' locked'}">
+                  <p class="stage-name"><span aria-hidden="true">${st.tipo === 'PICO' ? '⛰️' : j === 0 ? '🌱' : '🌿'}</span> ${esc(Cultivo.ESTAGIOS[st.tipo].curto)}${open ? '' : ' <small>· selado</small>'}</p>
+                  <div class="stage-levels">${st.desafiosIds.map((id) => levelCard(id, open, p.next.id)).join('')}</div>
+                </div>`;
+            }).join('')}
           </div>
-        </li>`;
+        </section>`;
     }).join('');
 
-    const fut = Levels.FUTURE_LEVELS[0];
     $('#view-desafios').innerHTML = `
       <div class="page-head">
-        <h2>🗺️ Desafios — Mapa da Jornada</h2>
-        <p>Cada nível mostra um desenho-alvo. Escreva um programa que faça a tartaruga desenhá-lo. Ao concluir, o próximo nível é desbloqueado.</p>
+        <h2>☯️ O Dao dos Algoritmos — Os 6 Reinos</h2>
+        <p>Cada desafio mostra um desenho-alvo: escreva o programa que faz a tartaruga desenhá-lo. Conclua os dois desafios de um estágio para abrir o próximo. Vencer os dois desafios do <b>Pico (Gargalo)</b> rompe o reino e abre o seguinte.</p>
       </div>
       <div class="map-layout">
-        <div class="map-wrap">
-        <svg class="map-path" aria-hidden="true"></svg>
-        <ol class="map" aria-label="Níveis">
-          <li class="map-node start" style="--off:0px"><span class="node-btn"><span class="node-icon" aria-hidden="true">🐢</span></span><div class="node-text"><b>Início</b></div></li>
-          ${nodes}
-          <li class="map-node finish ${Store.level(15).completed ? 'done' : ''}" style="--off:0px"><span class="node-btn"><span class="node-icon" aria-hidden="true">🏆</span></span><div class="node-text"><b>Mestre da Tartaruga</b><small>${Store.level(15).completed ? 'Conquistado!' : 'Conclua o nível 15'}</small></div></li>
-          <li class="map-node future" style="--off:0px">
-            <span class="node-btn"><span class="node-icon" aria-hidden="true">${fut.icon}</span></span>
-            <div class="node-text"><b>${esc(fut.title)}</b><small>🚧 Em breve</small></div>
-          </li>
-        </ol>
-        </div>
+        <div class="realms">${reinos}</div>
         <aside class="map-side">
-          <div class="card">
-            <h3>Seu progresso</h3>
-            <p class="big-number">${p.done}<small>/${p.total} níveis</small></p>
+          <div class="card cultivator" style="--aura:${sit.reino.corAura}">
+            <h3>Seu cultivo</h3>
+            <p class="cult-realm"><span aria-hidden="true">${sit.reino.icone}</span> Reino ${sit.reino.id}: ${esc(sit.reino.nome)}</p>
+            <p class="cult-stage">${esc(sit.completo ? 'Grande Perfeição' : sit.estagio.nome)} · <b>${esc(sit.titulo)}</b></p>
+            <p class="big-number">${p.done}<small>/${p.total} desafios</small></p>
             <p><span class="stars big">★</span> ${p.stars} de ${p.total * 3} estrelas</p>
-            <a class="btn btn-primary btn-block" href="#/desafio/${LEVELS[p.current].id}">▶ Jogar o nível ${LEVELS[p.current].id}</a>
+            <a class="btn btn-primary btn-block" href="#/desafio/${p.next.id}">▶ Cultivar: ${esc(nomeDesafio(p.next).toLowerCase())}</a>
             <div class="identity">
               <span>Jogador: <b>${esc(Store.data.nome || '—')}</b></span>
               <span>Código: <b class="mono">${myCode()}</b></span>
@@ -716,44 +767,19 @@
             <h3>Como ganhar estrelas</h3>
             <ul>
               <li><span class="stars">★☆☆</span> desenho correto</li>
-              <li><span class="stars">★★☆</span> usando REPITA quando faz sentido</li>
+              <li><span class="stars">★★☆</span> usando a técnica do reino (REPITA, PARA, REPCONT ou recursão)</li>
               <li><span class="stars">★★★</span> solução eficiente (poucos comandos)</li>
             </ul>
-            <p class="muted">Você pode voltar a qualquer nível concluído para melhorar sua marca.</p>
+            <p class="muted">📏 No Reino 4 (Refinamento Puro) existe um <b>limite de comandos</b>: acima dele o desafio não conta.</p>
           </div>
-          <div class="card future-card">
-            <h3>${fut.icon} ${esc(fut.title)} <span class="tag">em breve</span></h3>
-            <canvas class="fractal-preview" width="260" height="200" role="img" aria-label="Prévia: floco de neve de Koch"></canvas>
-            <p class="muted">${esc(Fractals.description)}</p>
+          <div class="card legend">
+            <h3>⛰️ O Gargalo</h3>
+            <p class="muted">Cada reino tem 3 estágios: 🌱 Inicial, 🌿 Intermediário e ⛰️ Pico. O Pico só abre depois do Intermediário — e vencê-lo provoca o <b>Rompimento de Reino</b>.</p>
           </div>
         </aside>
       </div>`;
-    requestAnimationFrame(drawMapPath);
     $('#view-desafios [data-open-code]').addEventListener('click', openCodeModal);
-    const fc = $('#view-desafios .fractal-preview');
-    const flake = Turtle.simulate(Fractals.snowflakeActions(240, 3), Turtle.createState());
-    Turtle.renderFit(fc, flake.segments, { padding: 12, lineWidth: 1.5 });
   }
-
-  /** Desenha a trilha pontilhada que liga os níveis do mapa. */
-  function drawMapPath() {
-    const wrap = $('#view-desafios .map-wrap');
-    if (!wrap || !wrap.offsetParent) return;
-    const wr = wrap.getBoundingClientRect();
-    const pts = $$('.node-btn', wrap).map((b) => {
-      const r = b.getBoundingClientRect();
-      return [r.left + r.width / 2 - wr.left, r.top + r.height / 2 - wr.top];
-    });
-    if (pts.length < 2) return;
-    let d = `M${pts[0][0]},${pts[0][1]}`;
-    for (let i = 1; i < pts.length; i++) {
-      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
-      const my = (y0 + y1) / 2;
-      d += ` C${x0},${my} ${x1},${my} ${x1},${y1}`;
-    }
-    $('.map-path', wrap).innerHTML = `<path d="${d}"/>`;
-  }
-  window.addEventListener('resize', () => { if (currentView === 'desafios') drawMapPath(); });
 
   /* ===================================================================== *
    *  DESAFIO — tela de um nível
@@ -763,17 +789,16 @@
   let levelSession = null; // { hints, hadErrors }
 
   function renderDesafio(params) {
-    const id = parseInt(params[0], 10);
-    const idx = LEVELS.findIndex((l) => l.id === id);
-    if (idx < 0) { location.hash = '#/desafios'; return; }
-    if (!canPlay(idx)) {
-      toast('🔒 Este nível ainda está bloqueado. Conclua o nível anterior primeiro.');
+    const level = Levels.byId(params[0]);
+    if (!level || !Cultivo.numero(level.id)) { location.hash = '#/desafios'; return; }
+    if (!canPlay(level.id)) {
+      toast('🔒 Este desafio ainda está selado. Conclua o estágio anterior do reino primeiro.');
       location.hash = '#/desafios';
       return;
     }
-    openLevel(LEVELS[idx], false);
+    openLevel(level, false);
     if (params[1] === 'solucao' && isAdmin()) {
-      requestAnimationFrame(() => { levelWS.stage.resize(); showSolution(LEVELS[idx]); });
+      requestAnimationFrame(() => { levelWS.stage.resize(); showSolution(level); });
     }
   }
 
@@ -799,19 +824,26 @@
     const info = $('.level-info', view);
     const res = custom ? { stars: 0 } : Store.level(level.id);
     const reqs = (level.requires || []).filter((r) => r !== 'PF');
-    const idx = LEVELS.indexOf(level);
-
-    const crit2 = level.repeatUseful ? 'Usou o REPITA' : 'Sem comandos sobrando';
+    const pos = Cultivo.ORDER.indexOf(level.id);
+    const prevId = !custom && pos > 0 ? Cultivo.ORDER[pos - 1] : null;
+    const onde = custom ? null : Cultivo.onde(level.id);
+    const tech = Levels.techniqueOf(level);
+    const par = Levels.parOf(level);
+    const CRIT2 = { REPITA: 'Usou o REPITA', PARA: 'Criou um procedimento', REPCONT: 'Usou REPCONT', RECURSAO: 'Usou recursão' };
+    const crit2 = tech ? CRIT2[tech] : 'Sem comandos sobrando';
     info.innerHTML = `
       <div class="aside-head">
         <a class="back-btn" href="${custom ? '#/inicio' : '#/desafios'}" aria-label="Voltar ${custom ? 'ao início' : 'ao mapa de níveis'}">‹</a>
-        <h2 id="level-title">${custom ? 'Desafio do Professor' : `Desafio do Nível ${level.id}`}</h2>
+        <h2 id="level-title">${custom ? 'Desafio do Professor' : `${nomeDesafio(level)} de ${JORNADA.length}`}</h2>
       </div>
+      ${onde ? `<p class="realm-line" style="--aura:${onde.reino.corAura}"><span aria-hidden="true">${onde.reino.icone}</span> Reino ${onde.reino.id} · ${esc(onde.reino.nome)} — <b>${esc(onde.estagio.nome)}</b></p>` : ''}
 
       <div class="in-card challenge-card">
         <span class="ch-icon" aria-hidden="true">${level.icon}</span>
         <div>
           <b class="ch-title">${esc(level.title)}</b>
+          ${level.shape ? `<small class="ch-shape">${esc(level.shape)}</small>` : ''}
+          ${level.lore ? `<p class="ch-lore">${esc(level.lore)}</p>` : ''}
           <p class="challenge">${esc(level.challenge)}</p>
         </div>
       </div>
@@ -822,6 +854,7 @@
         <ul class="chips" aria-label="Regras do desafio">
           ${reqs.map((r) => `<li class="chip chip-req">📌 Obrigatório: ${esc(Levels.requirementLabel(r))}</li>`).join('')}
           ${level.finalAtStart ? '<li class="chip chip-req">📍 Termine no ponto inicial</li>' : ''}
+          ${level.limit ? `<li class="chip chip-limit">📏 Limite: até ${level.limit} comandos</li>` : ''}
         </ul>
         <label class="check small"><input type="checkbox" data-ghost ${Store.settings.ghost ? 'checked' : ''}> Mostrar o alvo tracejado no mundo</label>
       </figure>
@@ -838,13 +871,13 @@
         <p class="reward-text"></p>
         <ul class="reward-rules">
           <li>★ desenho correto</li>
-          <li>★★ ${level.repeatUseful ? 'usando REPITA' : 'sem comandos sobrando'}</li>
-          <li>★★★ até ${level.par} comando${level.par > 1 ? 's' : ''}</li>
+          <li>★★ ${tech ? Levels.TECHNIQUE_LABEL[tech] : 'sem comandos sobrando'}</li>
+          <li>★★★ até ${par} comando${par > 1 ? 's' : ''}</li>
         </ul>
       </section>
 
       <section class="in-card level-progress" aria-labelledby="lp-title">
-        <h3 id="lp-title"><span class="sec-icon" aria-hidden="true">🏁</span> Progresso do Nível</h3>
+        <h3 id="lp-title"><span class="sec-icon" aria-hidden="true">🏁</span> Progresso do Desafio</h3>
         <div class="lp-body">
           <div class="ring" role="img" aria-label="0% concluído"><span>0%</span></div>
           <ul class="criteria">
@@ -860,7 +893,7 @@
       <section class="in-card admin-solution" aria-labelledby="sol-title">
         <h3 id="sol-title"><span class="sec-icon" aria-hidden="true">👨‍🏫</span> Solução (professor)</h3>
         <pre class="snippet">${esc(level.solution)}</pre>
-        <p class="muted small">Meta para ⭐⭐⭐: até ${level.par} comando${level.par > 1 ? 's' : ''}. Outras soluções que gerem o mesmo desenho também valem.</p>
+        <p class="muted small">Meta para ⭐⭐⭐: até ${par} comando${par > 1 ? 's' : ''}${level.limit ? ` (limite: ${level.limit})` : ''}. Outras soluções que gerem o mesmo desenho também valem.</p>
         <div class="custom-actions">
           <button type="button" class="btn btn-sm btn-primary" data-show-solution>▶ Ver resolvendo</button>
           <button type="button" class="btn btn-sm" data-copy-solution>📋 Copiar</button>
@@ -869,8 +902,8 @@
       </section>` : ''}
 
       <div class="aside-nav">
-        ${!custom && idx > 0 ? `<a class="btn btn-ghost" href="#/desafio/${LEVELS[idx - 1].id}" aria-label="Nível anterior">‹ Anterior</a>` : ''}
-        <a class="btn map-btn" href="#/desafios">🗺️ Mapa de Níveis</a>
+        ${prevId ? `<a class="btn btn-ghost" href="#/desafio/${prevId}" aria-label="Desafio anterior">‹ Anterior</a>` : ''}
+        <a class="btn map-btn" href="#/desafios">☯️ Mapa dos Reinos</a>
       </div>`;
 
     updateLevelPanel(res.completed ? res.stars : 0, 'best');
@@ -899,6 +932,8 @@
     levelWS.resetWorld();
     levelWS.stage.setOption('viewHalf', 260);
     levelWS.stage.setGhost(Levels.targetOf(level));
+    // blocos PARA/REPCONT/SE/PARE no painel a partir do Reino 5
+    levelWS.setAdvanced(custom || (onde && onde.reino.id >= 5) || /PARA|REPCONT/i.test(level.solution));
     requestAnimationFrame(() => renderTargetPreview(level));
   }
 
@@ -983,15 +1018,46 @@
       Store.recordLevel(level.id, result.stars, compiled.analysis.size);
       updateLevelPanel(result.stars, 'try');
       fireEvent('levelComplete', { level, stars: result.stars, hadErrors: s.hadErrors || (Store.data.attempts[level.id] || 0) > 0 });
+      const rompidos = Cultivo.registrarRompimentos(Store.data);
+      Store.save();
+      rompidos.forEach((r) => fireEvent('breakthrough', { reino: r }));
       updateHUD();
+      showSuccess(level, result, compiled, rompidos);
+      return;
     }
-    showSuccess(level, result, compiled);
+    showSuccess(level, result, compiled, []);
   }
 
-  function showSuccess(level, result, compiled) {
+  /** Modal celebratório do Rompimento de Reino (Breakthrough). */
+  function showBreakthrough(reinos) {
+    if (!reinos.length) return;
+    const r = reinos[0];
+    const prox = Cultivo.REINOS[r.id]; // o próximo reino (ids começam em 1)
+    openModal({
+      title: '✨ Rompimento de Reino!',
+      wide: true,
+      html: `
+        <div class="breakthrough" style="--aura:${r.corAura}">
+          <div class="bt-aura" aria-hidden="true"><span>${r.icone}</span></div>
+          <p class="bt-kicker">Reino ${r.id} · ${esc(r.nome)}</p>
+          <p class="bt-title">Gargalo rompido!</p>
+          <blockquote class="bt-quote">“${esc(r.citacao)}”</blockquote>
+          <p>Novo título marcial: <b class="bt-rank">${esc(r.titulo)}</b></p>
+          ${prox
+            ? `<p class="bt-next">O <b>Reino ${prox.id}: ${esc(prox.nome)}</b> (${esc(prox.subtitulo)}) se abre diante de você.<br><span class="muted">${esc(prox.foco)}</span></p>`
+            : '<p class="bt-next">Você atravessou os seis reinos e alcançou a <b>Grande Perfeição</b>. A tartaruga tornou-se celestial! ☯️</p>'}
+        </div>`,
+      actions: prox
+        ? [{ label: `Entrar no Reino ${prox.id} ▶`, cls: 'btn-primary', href: '#/desafios' }, { label: 'Continuar aqui' }]
+        : [{ label: '☯️ Ver a jornada completa', cls: 'btn-primary', href: '#/desafios' }, { label: '🎨 Modo Livre', href: '#/livre' }],
+      onClose: () => setTimeout(() => showBreakthrough(reinos.slice(1)), 250),
+    });
+    $('#modal').classList.add('breakthrough-modal');
+  }
+
+  function showSuccess(level, result, compiled, rompidos) {
     const a = compiled.analysis, st = compiled.stats;
-    const idx = LEVELS.indexOf(level);
-    const next = LEVELS[idx + 1];
+    const next = levelSession.custom ? null : Cultivo.proximo(Store.data, level.id);
     const tip = Levels.nextStarTip(level, result, a);
     const custom = levelSession.custom;
 
@@ -1021,17 +1087,17 @@
     const actions = [];
     if (level.final) {
       actions.push({ label: '🎨 Ir para o Modo Livre', cls: 'btn-primary', href: '#/livre' });
-      actions.push({ label: '🗺️ Mapa', href: '#/desafios' });
+      actions.push({ label: '☯️ Mapa', href: '#/desafios' });
     } else if (custom) {
       actions.push({ label: 'Fechar', cls: 'btn-primary' });
     } else {
-      if (next) actions.push({ label: `Próximo nível ▶`, cls: 'btn-primary', href: '#/desafio/' + next.id });
+      if (next) actions.push({ label: `Próximo: ${esc(nomeDesafio(next).toLowerCase())} ▶`, cls: 'btn-primary', href: '#/desafio/' + next.id });
       if (result.stars < 3) actions.push({ label: '🔁 Tentar 3 estrelas' });
-      actions.push({ label: '🗺️ Mapa', href: '#/desafios' });
+      actions.push({ label: '☯️ Mapa', href: '#/desafios' });
     }
-    const title = level.final ? '🏆 Você é Mestre da Tartaruga!' : '🎉 Muito bem!';
+    const title = level.final ? '☯️ Grande Perfeição!' : '🎉 Técnica dominada!';
     setTimeout(() => {
-      openModal({ title, html, actions, wide: true });
+      openModal({ title, html, actions, wide: true, onClose: () => setTimeout(() => showBreakthrough(rompidos || []), 250) });
       if (level.final) $('#modal').classList.add('celebrate');
       else $('#modal').classList.remove('celebrate');
     }, 350);
@@ -1275,6 +1341,8 @@
     rendered.comandos = true;
     const groups = {};
     Object.values(Logo.commands).forEach((c) => { (groups[c.doc.group] = groups[c.doc.group] || []).push(c); });
+    // linguagem avançada (Reinos 5 e 6): mesmo formato de cartão
+    Logo.KEYWORD_DOCS.forEach((d) => { (groups[d.group] = groups[d.group] || []).push({ name: d.name, doc: d, aliases: [] }); });
     const future = {};
     Object.entries(Logo.FUTURE_WORDS).forEach(([w, why]) => { (future[why] = future[why] || []).push(w); });
 
@@ -1306,6 +1374,7 @@
           <li>Números podem ter vírgula ou ponto: <code>PF 2,5</code> e <code>PF 2.5</code>.</li>
           <li>Comentários começam com <code>;</code> — a tartaruga ignora o resto da linha.</li>
           <li>REPITA pode ter outro REPITA dentro: <code>REPITA 6 [REPITA 3 [PF 80 PD 120] PD 60]</code>.</li>
+          <li>Reino 5 em diante: contas com <code>+ - * /</code> e parênteses (<code>PF :T / 3</code>). Atenção: <code>:N - 1</code> e <code>:N-1</code> são conta; <code>:N -1</code> (espaço só antes) são dois valores.</li>
         </ul>
       </div>
       <div class="card future">
@@ -1335,7 +1404,8 @@
       </div>
       <div class="stat-row">
         <div class="stat card"><span class="stat-num">${lessons}/${TUTORIAL.length}</span><span>aulas concluídas</span></div>
-        <div class="stat card"><span class="stat-num">${p.done}/${p.total}</span><span>níveis concluídos</span></div>
+        <div class="stat card"><span class="stat-num">${p.done}/${p.total}</span><span>desafios concluídos</span></div>
+        <div class="stat card"><span class="stat-num">${Cultivo.situacao(Store.data).rompidos.length}/${Cultivo.REINOS.length}</span><span>reinos rompidos</span></div>
         <div class="stat card"><span class="stat-num">${p.stars}/${p.total * 3}</span><span>estrelas</span></div>
         <div class="stat card"><span class="stat-num">${p.badges}/${Achievements.ACHIEVEMENTS.length}</span><span>conquistas</span></div>
       </div>
@@ -1379,9 +1449,9 @@
   function renderProfessor() {
     const view = $('#view-professor');
     if (!isAdmin()) return renderProfessorLock(view);
-    const rows = LEVELS.map((l) => `
+    const rows = JORNADA.map((l) => `
       <tr>
-        <th scope="row">${l.icon} ${l.id}. ${esc(l.title)}</th>
+        <th scope="row">${l.icon} ${Cultivo.numero(l.id)}. ${esc(l.title)}<br><small class="muted">R${Cultivo.onde(l.id).reino.id} · ${esc(Cultivo.ESTAGIOS[Cultivo.onde(l.id).estagio.tipo].curto)}</small></th>
         <td>${esc(l.challenge)}</td>
         <td>${esc(l.goal)}</td>
         <td>${l.commands.map((c) => `<code>${c}</code>`).join(' ')}</td>
@@ -1403,15 +1473,17 @@
       <section class="card" aria-labelledby="all-levels-title">
         <h3 id="all-levels-title">🗝️ Todas as fases e soluções</h3>
         <p class="muted">Enquanto o modo professor estiver ativo (até fechar esta aba), todas as fases ficam abertas e cada desafio mostra a solução. Nada do que você executar é salvo no progresso deste computador.</p>
+        ${Cultivo.REINOS.map((r) => `
+        <h4 class="sol-realm" style="--aura:${r.corAura}">${r.icone} Reino ${r.id} · ${esc(r.nome)}</h4>
         <div class="solutions-grid">
-          ${LEVELS.map((l) => `
+          ${r.subEstagios.flatMap((st) => st.desafiosIds).map((id) => Levels.byId(id)).map((l) => `
             <article class="solution-card">
               <canvas class="sol-thumb" data-level="${l.id}" role="img" aria-label="Desenho-alvo do nível ${l.id}"></canvas>
               <div class="sol-body">
-                <h4>${l.icon} ${l.id}. ${esc(l.title)}</h4>
+                <h4>${l.icon} ${Cultivo.numero(l.id)}. ${esc(l.title)} <small class="muted">· ${esc(Cultivo.ESTAGIOS[Cultivo.onde(l.id).estagio.tipo].curto)}</small></h4>
                 <p class="small">${esc(l.challenge)}</p>
                 <pre class="snippet small">${esc(l.solution)}</pre>
-                <p class="muted small">⭐⭐⭐ até ${l.par} comando${l.par > 1 ? 's' : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
+                <p class="muted small">⭐⭐⭐ até ${Levels.parOf(l)} comandos${l.limit ? ` · 📏 limite ${l.limit}` : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
                 <details class="small"><summary>Dicas do nível</summary><ol>${l.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ol></details>
                 <div class="custom-actions">
                   <a class="btn btn-sm btn-primary" href="#/desafio/${l.id}/solucao">▶ Ver resolvendo</a>
@@ -1419,22 +1491,23 @@
                 </div>
               </div>
             </article>`).join('')}
-        </div>
+        </div>`).join('')}
       </section>
 
       <section class="card">
         <h3>🎯 Objetivo e progressão</h3>
         <p>O aluno aprende lógica de programação construindo desenhos: <b>escreve → executa → observa → identifica o erro → corrige</b>.
         A progressão vai de comandos simples (sequência) a ângulos, repetição (loop), laços aninhados, decomposição e engenharia reversa.</p>
-        <p class="flow">APRENDER → EXPERIMENTAR → RESOLVER DESAFIOS → CONQUISTAR NÍVEIS → CRIAR → PROGRAMAR LIVREMENTE</p>
+        <p class="flow">APRENDER → EXPERIMENTAR → RESOLVER DESAFIOS → ROMPER REINOS → CRIAR → PROGRAMAR LIVREMENTE</p>
+        <p><b>O Dao dos Algoritmos:</b> 36 desafios em 6 reinos × 3 estágios (Inicial, Intermediário, Pico). Um estágio abre quando o anterior é concluído; vencer o Pico rompe o reino. Reino 1: sequência e precisão · Reino 2: REPITA e polígonos · Reino 3: laços aninhados · Reino 4: otimização com limite de comandos · Reino 5: REPCONT, procedimentos e a primeira recursão · Reino 6: fractais e recursão avançada.</p>
         <p class="muted">A verificação dos desafios compara o <b>desenho</b>, não o código: soluções diferentes são aceitas. Desenhos espelhados (PE em vez de PD), girados em 90° ou deslocados também valem.</p>
       </section>
 
       <section class="card">
-        <h3>🗺️ Visão geral dos níveis</h3>
+        <h3>🗺️ Visão geral dos 36 desafios</h3>
         <div class="table-scroll">
           <table class="teacher-table">
-            <thead><tr><th>Nível</th><th>Desafio</th><th>Objetivo pedagógico</th><th>Comandos</th><th>Conceitos</th><th>Sugestão</th><th>Solução</th></tr></thead>
+            <thead><tr><th>Desafio</th><th>Desafio</th><th>Objetivo pedagógico</th><th>Comandos</th><th>Conceitos</th><th>Sugestão</th><th>Solução</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -1468,14 +1541,14 @@
       </section>
 
       <section class="card">
-        <h3>❄️ ${esc(Fractals.title)} <span class="tag">em breve</span></h3>
+        <h3>❄️ Linguagem avançada: procedimentos e recursão <span class="tag">Reinos 5 e 6</span></h3>
         <div class="fractal-box">
           <canvas class="fractal-preview" width="300" height="240" role="img" aria-label="Floco de neve de Koch"></canvas>
           <div>
             <p>${esc(Fractals.description)}</p>
-            <p class="muted">Quando a linguagem ganhar procedimentos, variáveis e condicionais, o aluno poderá escrever algo assim:</p>
+            <p class="muted">A partir do Reino 5 a linguagem tem PARA … FIM com parâmetros, contas, SE, PARE e REPCONT. O floco de Koch, por exemplo:</p>
             <pre class="snippet">${esc(Fractals.FUTURE_CODE)}</pre>
-            <p class="muted small">A arquitetura já está preparada: veja <code>js/fractals.js</code> e o README.</p>
+            <p class="muted small">As aulas 8, 9 e 10 do tutorial apresentam REPCONT, procedimentos e recursão.</p>
           </div>
         </div>
       </section>
@@ -1496,7 +1569,7 @@
       route(true);
     });
     requestAnimationFrame(() => $$('.sol-thumb', view).forEach((c) => {
-      const lvl = LEVELS.find((l) => l.id === +c.dataset.level);
+      const lvl = Levels.byId(c.dataset.level);
       Turtle.renderFit(c, Levels.targetOf(lvl), { showStart: true, padding: 10 });
     }));
     $('[data-reset]', view).addEventListener('click', resetProgress);
@@ -1585,4 +1658,6 @@
   updateHUD();
   route(true);
   if (!Store.data.nome) setTimeout(askName, 400);
+  // conquistas de rompimento para quem já tinha progresso da versão antiga
+  setTimeout(() => fireEvent('sync'), 800);
 })();

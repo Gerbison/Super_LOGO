@@ -23,6 +23,11 @@
       drawings: [],      // desenhos do modo livre: { id, name, code, thumb, date }
       galleryRuns: [],   // ids dos exemplos executados
       unlockAll: false,  // Modo Professor: liberar todos os níveis
+      cultivo: {         // O Dao dos Algoritmos (js/cultivo.js)
+        rompimentos: {}, // { [reinoId]: data ISO do Rompimento de Reino }
+        reinoAtual: 1,
+        estagioAtual: 'INICIAL',
+      },
       settings: {
         speed: 'normal', grid: true, ghost: true, highlight: true, arc: true,
         theme: 'auto', fontSize: 16, penColor: '', penWidth: 3, continueDrawing: false,
@@ -33,6 +38,8 @@
   function merge(base, saved) {
     const out = Object.assign({}, base, saved);
     out.settings = Object.assign({}, base.settings, saved && saved.settings);
+    out.cultivo = Object.assign({}, base.cultivo, saved && saved.cultivo);
+    out.cultivo.rompimentos = Object.assign({}, saved && saved.cultivo && saved.cultivo.rompimentos);
     return out;
   }
 

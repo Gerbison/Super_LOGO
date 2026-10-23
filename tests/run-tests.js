@@ -118,8 +118,8 @@ const errorCases = [
   ['PF 100, PD 90', /vírgula/],
   ['REPITA 4 (PF 100 PD 90)', /colchetes/],
   ['PARA FRENTE 100', /PF/],
-  ['PARA QUADRADO', /ainda não está disponível/],
-  ['PF :lado', /Variáveis/],
+  ['PARA QUADRADO', /Faltou o FIM/],
+  ['PF :lado', /não conhece :lado/],
   ['PF cem', /algarismos/],
 ];
 errorCases.forEach(([code, re, snippet]) => {
@@ -225,7 +225,7 @@ function dados(nome, levels, lessons) {
 test('código de progresso: ida e volta em outro computador', () => {
   const origem = dados('Luíza', { 1: { completed: true, stars: 3 }, 2: { completed: true, stars: 1 }, 15: { completed: true, stars: 2 } }, { 1: true, 7: true });
   const codigo = Progresso.gerarCodigo(origem, L, TUTORIAL);
-  assert.match(codigo, /^TAR-[0-9A-Z]{8}-[0-9A-Z]{4}$/);
+  assert.match(codigo, /^TAR2-[0-9A-Z]{17}-[0-9A-Z]{4}$/);
   const novo = dados('');
   const r = Progresso.importar(novo, codigo, 'Luiza', L, TUTORIAL); // sem acento também vale
   assert.ok(r.ok, r.motivo);
@@ -264,10 +264,231 @@ test('código de progresso: formato inválido dá mensagem clara', () => {
 
 test('conquistas são recuperadas ao importar (evento sync)', () => {
   const Ach = require('../js/achievements.js');
-  const d = dados('Ana', { 5: { completed: true, stars: 3 }, 15: { completed: true, stars: 3 } });
+  const d = dados('Ana', { 5: { completed: true, stars: 3 }, 36: { completed: true, stars: 3 } });
   d.achievements = {}; d.galleryRuns = [];
   const ids = Ach.check('sync', {}, d).map((a) => a.id);
   assert.ok(ids.includes('quadrado') && ids.includes('mestre') && !ids.includes('estrela'));
+});
+
+/* ------------------- Linguagem avançada (Reinos 5 e 6) ------------------ */
+test('PARA … FIM com parâmetro e chamadas', () => {
+  const s = draw('PARA QUADRADO :LADO\n  REPITA 4 [PF :LADO PD 90]\nFIM\nQUADRADO 40\nQUADRADO 80').state;
+  assert.strictEqual(s.segments.length, 8);
+  assert.ok(near(s.x, 0) && near(s.y, 0));
+});
+test('procedimento pode ser chamado antes de ser definido', () => {
+  assert.strictEqual(draw('LINHA 30\nPARA LINHA :T\n PF :T\nFIM').state.segments.length, 1);
+});
+test('contas, parênteses e precedência', () => {
+  assert.ok(near(draw('PF 2 + 3 * 4').state.y, 14));
+  assert.ok(near(draw('PF (2 + 3) * 4').state.y, 20));
+  assert.ok(near(draw('PF 100 / 4 - 5').state.y, 20));
+  assert.ok(near(draw('PF - 10 + 30').state.y, 20));
+});
+test('regra do sinal: ":N - 1" e ":N-1" são conta; ":N -1" são dois valores', () => {
+  const p = 'PARA A :X :Y\n PF :X PD 90 PF :Y\nFIM\n';
+  assert.ok(near(draw(p + 'A 10 - 1 5').state.x, 5));
+  assert.ok(near(draw(p + 'A 10-1 5').state.y, 9));
+  assert.ok(near(draw(p + 'A 10 -1').state.x, -1));
+});
+test('REPCONT vale o número da volta (e a volta do REPITA mais interno)', () => {
+  assert.ok(near(draw('REPITA 4 [PF REPCONT]').state.y, 10));
+  assert.ok(near(draw('REPITA 2 [REPITA 3 [PF REPCONT]]').state.y, 12));
+});
+test('SE / SENAO e comparações', () => {
+  const p = 'PARA X :N\n SE :N > 2 [PF 10] SENAO [PT 10]\nFIM\n';
+  assert.ok(near(draw(p + 'X 3').state.y, 10));
+  assert.ok(near(draw(p + 'X 1').state.y, -10));
+  assert.ok(near(draw('PARA Y :N\n SE :N <> 0 [PF 1]\nFIM\nY 0 Y 2 Y 5').state.y, 2));
+});
+test('recursão com PARE (escada) e PARE fora de procedimento encerra o programa', () => {
+  const r = draw('PARA DEGRAU :N\n SE :N = 0 [PARE]\n PF 10 PD 90 PF 10 PE 90\n DEGRAU :N - 1\nFIM\nDEGRAU 5');
+  assert.strictEqual(r.state.segments.length, 10);
+  assert.ok(r.analysis.recursive && r.analysis.usesProcedures);
+  assert.strictEqual(draw('PF 10 PARE PF 10').state.segments.length, 1);
+});
+test('PARE dentro de REPITA num procedimento não deixa a contagem de voltas presa', () => {
+  const r = Logo.compile('PARA P\n REPITA 5 [PF 1 PARE]\nFIM\nP\nREPITA 2 [PF REPCONT]');
+  assert.strictEqual(r.actions[r.actions.length - 1].loops.length, 1);
+});
+test('análise: técnicas usadas', () => {
+  const a = Logo.compile('PARA K :N\n SE :N = 0 [PARE]\n REPITA 2 [PF REPCONT]\n K :N - 1\nFIM\nK 2').analysis;
+  assert.ok(a.usesProcedures && a.recursive && a.usesRepcount && a.usesRepeat);
+  assert.ok(a.commandsUsed.includes('PARA') && a.commandsUsed.includes('SE') && a.commandsUsed.includes('REPCONT'));
+});
+[
+  ['PARA X :N\n X :N + 1\nFIM\nX 1', /Recursão sem fim/],
+  ['PF REPCONT', /REPCONT só funciona dentro de um REPITA/],
+  ['PF 10 / 0', /Divisão por zero/],
+  ['PARA PF\n PT 1\nFIM', /já é uma palavra da tartaruga/],
+  ['PARA QUADRADO :L\n PF :L\n', /Faltou o FIM/],
+  ['FIM', /FIM sem PARA/],
+  ['SE 1 = [PF 10]', /Faltou um número depois de =/],
+  ['PF (10 + 5', /Faltou fechar o parêntese/],
+  ['SENAO [PF 1]', /SENAO precisa vir logo depois de um SE/],
+  ['SE [PF 1]', /SE precisa de uma condição/],
+  ['PARA A :X\n PF :Y\nFIM\nA 1', /não conhece :Y/],
+  ['PARA A :X\n PF :X\nFIM\nA', /Está faltando um número depois de A/],
+  ['REPITA 2 [PARA B\n PF 1\nFIM]', /PARA não pode ficar dentro de outro bloco/],
+  ['PARA A\n PF 1\nFIM\nPARA A\n PT 1\nFIM', /Já existe um comando chamado A/],
+  ['REPCONT', /REPCONT é um número, não um comando/],
+  [':LADO', /está sozinho/],
+  ['PF 10 * ', /Faltou um número depois de \*/],
+  ['TO QUADRADO', /inglês/],
+].forEach(([code, re]) => test(`erro amigável (avançado): ${JSON.stringify(code)}`, () => {
+  const e = errorOf(code);
+  assert.ok(e, 'deveria gerar erro');
+  assert.match(e.title + ' ' + e.message, re);
+  assert.ok(typeof e.start === 'number' && e.end > e.start, 'posição do erro');
+}));
+
+/* --------------------- O Dao dos Algoritmos (cultivo) ------------------- */
+const Cultivo = require('../js/cultivo.js');
+const Achievements = require('../js/achievements.js');
+const vazio = () => ({ levels: {}, lessons: {}, achievements: {}, galleryRuns: [], cultivo: { rompimentos: {} } });
+const conclui = (d, ids, stars) => ids.forEach((id) => { d.levels[id] = { completed: true, stars: stars || 3, size: 1 }; });
+
+test('36 desafios: 6 reinos × 3 estágios × 2, cada id uma única vez', () => {
+  assert.strictEqual(Levels.LEVELS.length, 36);
+  assert.strictEqual(Cultivo.REINOS.length, 6);
+  assert.strictEqual(Cultivo.STAGES.length, 18);
+  Cultivo.STAGES.forEach((s) => assert.strictEqual(s.estagio.desafiosIds.length, 2));
+  assert.deepStrictEqual(Cultivo.ORDER.slice().sort((a, b) => a - b), Levels.LEVELS.map((l) => l.id));
+  assert.ok(Cultivo.orderedLevels().every(Boolean));
+});
+test('os 15 originais ficam nos Reinos 1-4 e os básicos no Reino 1', () => {
+  [1, 2, 3, 4].forEach((id) => assert.strictEqual(Cultivo.onde(id).reino.id, 1));
+  [5, 6, 7, 8, 9].forEach((id) => assert.strictEqual(Cultivo.onde(id).reino.id, 2));
+  [10, 11, 12, 13].forEach((id) => assert.strictEqual(Cultivo.onde(id).reino.id, 3));
+});
+test('desbloqueio por estágio: começo, Intermediário e Pico (gargalo)', () => {
+  const d = vazio();
+  assert.ok(Cultivo.levelUnlocked(d, 1) && Cultivo.levelUnlocked(d, 2));
+  assert.ok(!Cultivo.levelUnlocked(d, 3) && !Cultivo.levelUnlocked(d, 16));
+  conclui(d, [1]);
+  assert.ok(!Cultivo.levelUnlocked(d, 3), 'o estágio só abre com os dois desafios concluídos');
+  conclui(d, [2]);
+  assert.ok(Cultivo.levelUnlocked(d, 3) && Cultivo.levelUnlocked(d, 16));
+  assert.ok(!Cultivo.levelUnlocked(d, 4), 'o Pico espera o Intermediário');
+  conclui(d, [3, 16]);
+  assert.ok(Cultivo.levelUnlocked(d, 4) && Cultivo.levelUnlocked(d, 17));
+  assert.ok(!Cultivo.levelUnlocked(d, 5), 'o Reino 2 espera o rompimento');
+});
+test('Rompimento de Reino: só ao vencer os dois desafios do Pico, uma única vez', () => {
+  const d = vazio();
+  conclui(d, [1, 2, 3, 16, 4]);
+  assert.deepStrictEqual(Cultivo.registrarRompimentos(d), []);
+  conclui(d, [17]);
+  const r = Cultivo.registrarRompimentos(d);
+  assert.deepStrictEqual(r.map((x) => x.id), [1]);
+  assert.deepStrictEqual(Cultivo.registrarRompimentos(d), []);
+  assert.ok(Cultivo.levelUnlocked(d, 5));
+  const s = Cultivo.situacao(d);
+  assert.strictEqual(s.reino.id, 2);
+  assert.strictEqual(s.titulo, 'Discípulo do Traço');
+  assert.strictEqual(d.cultivo.reinoAtual, 2);
+});
+test('retrocompatível: quem concluiu os 15 níveis antigos não perde nada', () => {
+  const d = vazio();
+  conclui(d, Array.from({ length: 15 }, (_, i) => i + 1));
+  for (let id = 1; id <= 15; id++) assert.ok(Cultivo.levelUnlocked(d, id), 'nível antigo ' + id);
+  [16, 17, 18, 19, 20, 21, 22, 23, 24].forEach((id) => assert.ok(Cultivo.levelUnlocked(d, id), 'novo ' + id));
+  assert.ok(!Cultivo.levelUnlocked(d, 25), 'o Reino 5 exige romper o Reino 4');
+  assert.strictEqual(Cultivo.situacao(d).reino.id, 4);
+  assert.strictEqual(Cultivo.proximo(d).id, 16);
+  assert.deepStrictEqual(Cultivo.registrarRompimentos(d).map((r) => r.id), [2]); // R2: 8 e 9 já vencidos
+});
+test('Qi do reino e próximo desafio', () => {
+  const d = vazio();
+  assert.strictEqual(Cultivo.proximo(d).id, 1);
+  conclui(d, [1, 2, 3]);
+  const s = Cultivo.situacao(d);
+  assert.strictEqual(s.reino.id, 1);
+  assert.strictEqual(s.qi, 50);
+  assert.strictEqual(Cultivo.proximo(d, 3).id, 16);
+});
+test('professor/demonstração: unlockAll abre tudo', () => {
+  const d = vazio();
+  d.unlockAll = true;
+  assert.ok(Cultivo.levelUnlocked(d, 36));
+});
+test('conquistas de rompimento (evento breakthrough e sync)', () => {
+  const d = vazio();
+  const r1 = Cultivo.REINOS[0];
+  assert.ok(Achievements.check('breakthrough', { reino: r1 }, d).map((a) => a.id).includes('reino1'));
+  const d2 = vazio();
+  conclui(d2, [8, 9]);
+  Cultivo.registrarRompimentos(d2);
+  assert.ok(Achievements.check('sync', {}, d2).map((a) => a.id).includes('reino2'));
+});
+
+/* ------------------- Desafios novos: alternativas e limites ------------- */
+const PK = 'PARA K :T :N\n SE :N < 1 [PF :T PARE]\n K :T/3 :N-1 PE 60 K :T/3 :N-1 PD 120 K :T/3 :N-1 PE 60 K :T/3 :N-1\nFIM\n';
+const altNovos = {
+  16: { ok: ['REPITA 2 [PF 40 LEVANTE PF 20 BAIXE] PF 40'], bad: ['PF 160', 'PF 40 LEVANTE PF 20 BAIXE PF 40'] },
+  17: { ok: ['PF 150 PE 90 PF 80 PE 90 PF 50 PE 90 PF 80'], bad: ['PF 150 PD 90 PF 80 PD 90 PF 80 PD 90 PF 80'] },
+  18: { ok: ['REPITA 6 [PF 80 PE 60]'], bad: ['REPITA 6 [PF 80 PD 50]'] },
+  19: { ok: ['REPITA 12 [REPITA 6 [PF 50 PE 60] PE 30]'], bad: ['REPITA 6 [REPITA 6 [PF 50 PD 60] PD 60]'] },
+  20: { ok: ['REPITA 24 [REPITA 3 [PF 100 PE 120] PE 15]'], bad: ['REPITA 12 [REPITA 3 [PF 100 PD 120] PD 30]'] },
+  21: { ok: ['REPITA 8 [PF 25 PD 90 PF 25 PE 90]'], bad: ['REPITA 8 [PF 25 PD 90 PF 20 PE 90]'] },
+  25: { ok: ['REPITA 40 [PF 5 * REPCONT PD 90]'], bad: ['REPITA 40 [PF REPCONT * 4 PD 90]'] },
+  26: { ok: ['PARA Q :L\n REPITA 4 [PF :L PD 90]\nFIM\nREPITA 4 [Q REPCONT * 40]'], bad: ['REPITA 4 [PF 40 PD 90] REPITA 4 [PF 80 PD 90] REPITA 4 [PF 120 PD 90] REPITA 4 [PF 160 PD 90]'] },
+  28: { ok: ['PARA E :T\n REPITA 8 [PF :T PD 135]\nFIM\nE 60 E 120 E 180'], bad: ['PARA E :T\n REPITA 8 [PF :T PD 135]\nFIM\nE 60 E 120'] },
+  32: { ok: [PK + 'PD 30\nREPITA 3 [K 240 3 PD 120]'], bad: [PK + 'PD 30\nREPITA 3 [K 240 2 PD 120]'] },
+  33: { ok: [], bad: ['PARA A :T :N\n SE :N = 0 [PARE]\n PF :T PE 25 A :T*0.7 :N-1 PD 50 A :T*0.7 :N-1 PE 25 PT :T\nFIM\nLEVANTE PT 150 BAIXE\nA 100 6'] },
+  34: { ok: ['PARA DRAGAO :N :S\n SE :N = 0 [PF 6 PARE]\n DRAGAO :N - 1 1\n PE 90 * :S\n DRAGAO :N - 1 -1\nFIM\nDRAGAO 10 1'], bad: [] },
+  36: { ok: [PK + 'REPITA 12 [K 54 3 PD 30]'], bad: [PK + 'REPITA 12 [K 54 2 PD 30]'] },
+};
+Object.entries(altNovos).forEach(([id, { ok, bad }]) => {
+  const level = Levels.byId(id);
+  ok.forEach((code) => test(`desafio ${id}: aceita ${JSON.stringify(code.slice(0, 50))}`, () => {
+    const res = play(level, code);
+    assert.ok(res.completed, res.text + ' ' + JSON.stringify(res.compare));
+  }));
+  bad.forEach((code) => test(`desafio ${id}: recusa ${JSON.stringify(code.slice(0, 50))}`, () => {
+    assert.ok(!play(level, code).completed);
+  }));
+});
+test('Reino 4: desenho certo acima do limite de comandos não conta', () => {
+  const longa = Array.from({ length: 8 }, () => 'PF 25 PD 90 PF 25 PE 90').join('\n');
+  const res = play(Levels.byId(21), longa);
+  assert.ok(!res.completed && /limite/.test(res.text), res.text);
+});
+test('desafio 25 exige REPCONT; 26 exige PARA', () => {
+  const longa = Array.from({ length: 40 }, (_, i) => `PF ${(i + 1) * 5} PD 90`).join('\n');
+  assert.ok(/REPCONT/.test(play(Levels.byId(25), longa).text));
+  assert.ok(/PARA/.test(play(Levels.byId(26), altNovos[26].bad[0]).text));
+});
+test('técnica da 2ª estrela: sem REPCONT o desafio 27 passa, mas com 1 estrela', () => {
+  const longa = Array.from({ length: 72 }, (_, i) => `PF ${(i + 1) / 2} PD 15`).join('\n');
+  const res = play(Levels.byId(27), longa);
+  assert.ok(res.completed, res.text);
+  assert.strictEqual(res.stars, 1);
+  assert.strictEqual(play(Levels.byId(27), 'REPITA 72 [PF REPCONT / 2 PD 15]').stars, 3);
+  assert.strictEqual(Levels.techniqueOf(Levels.byId(4)), null);
+  assert.strictEqual(Levels.techniqueOf(Levels.byId(5)), 'REPITA');
+});
+
+/* ---------------- código de progresso: versão antiga (TAR) -------------- */
+test('código antigo TAR- (15 níveis, 7 aulas) continua sendo importado', () => {
+  const antigos = Levels.LEVELS.filter((l) => l.id <= 15);
+  const aulas7 = TUTORIAL.filter((a) => a.id <= 7);
+  const origem = dados('Bia', { 1: { completed: true, stars: 3 }, 9: { completed: true, stars: 2 }, 15: { completed: true, stars: 1 } }, { 2: true });
+  const v1 = Progresso.gerarCodigo(origem, antigos, aulas7).replace(/^TAR2-/, 'TAR-');
+  const novo = dados('');
+  const r = Progresso.importar(novo, v1, 'Bia', L, TUTORIAL);
+  assert.ok(r.ok, r.motivo);
+  assert.strictEqual(r.versao, 1);
+  assert.deepStrictEqual([novo.levels[1].stars, novo.levels[9].stars, novo.levels[15].stars], [3, 2, 1]);
+  assert.ok(novo.lessons[2] && !novo.levels[16]);
+});
+test('código TAR2 leva os 36 desafios e as 10 aulas', () => {
+  const origem = dados('Caio', { 36: { completed: true, stars: 3 }, 16: { completed: true, stars: 2 } }, { 10: true });
+  const c = Progresso.gerarCodigo(origem, L, TUTORIAL);
+  const novo = dados('');
+  assert.ok(Progresso.importar(novo, c, 'Caio', L, TUTORIAL).ok);
+  assert.deepStrictEqual([novo.levels[36].stars, novo.levels[16].stars], [3, 2]);
+  assert.ok(novo.lessons[10]);
 });
 
 /* ------------------------------- Fractais ------------------------------- */

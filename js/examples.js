@@ -33,6 +33,32 @@
       id: 'tracejado', icon: '➖', title: 'Linha tracejada', text: 'LEVANTE e BAIXE dentro de um REPITA.',
       code: 'PD 90\nLEVANTE PT 200 BAIXE\nREPITA 10 [PF 20 LEVANTE PF 20 BAIXE]',
     },
+    { id: 'redemoinho', icon: '🌀', title: 'Redemoinho (REPCONT)', text: 'Cada lado um pouco maior que o anterior.', code: 'REPITA 60 [PF REPCONT * 3 PD 91]' },
+    {
+      id: 'arvore', icon: '🌳', title: 'Árvore fractal', text: 'Um galho que se divide em dois — recursão.',
+      code: `PARA ARVORE :T :N
+  SE :N = 0 [PARE]
+  PF :T PE 25
+  ARVORE :T * 0.72 :N - 1
+  PD 50
+  ARVORE :T * 0.72 :N - 1
+  PE 25 PT :T
+FIM
+LEVANTE PT 160 BAIXE
+ARVORE 95 8`,
+    },
+    {
+      id: 'koch', icon: '❄️', title: 'Floco de Koch', text: 'Cada linha vira quatro linhas menores.',
+      code: `PARA KOCH :T :N
+  SE :N = 0 [PF :T PARE]
+  KOCH :T / 3 :N - 1  PE 60
+  KOCH :T / 3 :N - 1  PD 120
+  KOCH :T / 3 :N - 1  PE 60
+  KOCH :T / 3 :N - 1
+FIM
+PD 30
+REPITA 3 [KOCH 220 4 PD 120]`,
+    },
   ];
 
   root.EXAMPLES = EXAMPLES;

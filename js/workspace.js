@@ -9,7 +9,7 @@
  *     resetEachRun: true,         // cada execução começa do zero?
  *     redo: false,                // mostrar botão Refazer
  *     freeTools: false,           // cores, espessura, PNG, .txt (Modo Livre)
- *     bigStage: false,            // mundo maior (Modo Livre)
+ *     bigStage: false, advanced: false,            // mundo maior (Modo Livre)
  *     colorIterations: false,     // uma cor por volta do REPITA
  *     onFinish(compiled, state),  // execução terminou
  *     onError(err), onRunStart(compiled), onSave(ws)
@@ -64,7 +64,14 @@
             <span class="cmd-ex"><code>${esc(d.short)}</code> <small>(${esc(d.note)})</small></span>
           </span>
         </button>`;
-    }).join('');
+    }).join('') + Logo.KEYWORD_DOCS.map((d) => `
+        <button type="button" class="cmd-tile cmd-advanced" data-insert="${esc(d.short)}" style="--c:${d.color}" title="Inserir no editor">
+          <span class="cmd-badge">${esc(d.name.split(' ')[0])}</span>
+          <span class="cmd-info">
+            <b>${esc(d.label)}</b>
+            <span class="cmd-ex"><code>${esc(d.short.split('\n')[0])}</code> <small>(${esc(d.note)})</small></span>
+          </span>
+        </button>`).join('');
   }
 
   function template(o, id) {
@@ -175,20 +182,32 @@
   }
 
   /* Pinta o código: cada comando com a cor do seu bloco. */
-  const TOKEN_RE = /(;[^\n]*|\/\/[^\n]*)|([A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ_0-9]*)|([-+]?\d+(?:[.,]\d+)?)|([[\]])/g;
+  const TOKEN_RE = /(;[^\n]*|\/\/[^\n]*)|(:[A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ_0-9]*)|([A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ_0-9]*)|(\d+(?:[.,]\d+)?)|([[\]])|([-+*/()=<>])/g;
+  const PROC_RE = /(?:^|\s)(?:PARA|APRENDA)\s+([A-Za-zÀ-ÖØ-öø-ÿ_][A-Za-zÀ-ÖØ-öø-ÿ_0-9]*)/gi;
 
   function highlight(text) {
+    // nomes dos procedimentos criados pelo aluno (PARA NOME ...)
+    const procs = new Set();
+    let pm;
+    PROC_RE.lastIndex = 0;
+    while ((pm = PROC_RE.exec(text))) procs.add(Logo.normalizeWord(pm[1]));
     let out = '', last = 0, m;
     TOKEN_RE.lastIndex = 0;
     while ((m = TOKEN_RE.exec(text))) {
       out += esc(text.slice(last, m.index));
       const t = esc(m[0]);
       if (m[1]) out += `<span class="tk-com">${t}</span>`;
-      else if (m[2]) {
-        const name = Logo.lookup(m[2]);
-        out += name ? `<span class="tk-cmd" style="color:${Logo.commands[name].doc.hl}">${t}</span>` : `<span class="tk-unk">${t}</span>`;
-      } else if (m[3]) out += `<span class="tk-num">${t}</span>`;
-      else out += `<span class="tk-br">${t}</span>`;
+      else if (m[2]) out += `<span class="tk-var">${t}</span>`;
+      else if (m[3]) {
+        const name = Logo.lookup(m[3]);
+        const up = Logo.normalizeWord(m[3]);
+        if (name) out += `<span class="tk-cmd" style="color:${Logo.commands[name].doc.hl}">${t}</span>`;
+        else if (Logo.isKeyword(m[3])) out += `<span class="tk-key">${t}</span>`;
+        else if (procs.has(up)) out += `<span class="tk-proc">${t}</span>`;
+        else out += `<span class="tk-unk">${t}</span>`;
+      } else if (m[4]) out += `<span class="tk-num">${t}</span>`;
+      else if (m[5]) out += `<span class="tk-br">${t}</span>`;
+      else out += `<span class="tk-op">${t}</span>`;
       last = m.index + m[0].length;
     }
     return out + esc(text.slice(last));
@@ -236,6 +255,7 @@
       this.clearMessage();
       this.setResult('idle', '<p class="muted">Nenhuma execução ainda.</p>');
       this.applySettings();
+      this.setAdvanced(this.opts.advanced);
       this.bind();
       this.updateStatus();
     }
@@ -297,6 +317,11 @@
         cont.addEventListener('change', () => { Store.settings.continueDrawing = cont.checked; Store.save(); });
         this.markSwatch();
       }
+    }
+
+    /** Mostra os blocos da linguagem avançada (PARA, REPCONT, SE, PARE). */
+    setAdvanced(on) {
+      this.root.classList.toggle('show-advanced', !!on);
     }
 
     applySettings() {

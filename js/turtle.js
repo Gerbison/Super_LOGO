@@ -18,9 +18,9 @@
 
   /* Velocidades: passos por segundo, graus por segundo e pausa entre comandos. */
   const SPEEDS = {
-    lenta: { move: 80, turn: 100, pause: 0.2, arc: true },
-    normal: { move: 240, turn: 360, pause: 0.03, arc: true },
-    rapida: { move: 1600, turn: 2600, pause: 0, arc: false },
+    lenta: { move: 80, turn: 100, pause: 0.2, arc: true, maxSeconds: 60 },
+    normal: { move: 240, turn: 360, pause: 0.03, arc: true, maxSeconds: 25 },
+    rapida: { move: 1600, turn: 2600, pause: 0, arc: false, maxSeconds: 6 },
   };
 
   /* Cores usadas para mostrar cada volta do REPITA (Aula 7). */
@@ -374,7 +374,15 @@
      */
     play(actions, { speed = 'normal', onAction, onDone } = {}) {
       this.stop();
-      const sp = SPEEDS[speed] || SPEEDS.normal;
+      let sp = SPEEDS[speed] || SPEEDS.normal;
+      // Desenhos enormes (fractais, curva do dragão) aceleram sozinhos para a
+      // animação não passar de sp.maxSeconds.
+      let total = 0;
+      for (const a of actions) total += a.type === 'move' ? Math.abs(a.dist) / sp.move : a.type === 'turn' ? Math.abs(a.angle) / sp.turn : 0;
+      if (total > sp.maxSeconds) {
+        const k = total / sp.maxSeconds;
+        sp = Object.assign({}, sp, { move: sp.move * k, turn: sp.turn * k, arc: sp.arc && k < 2 });
+      }
       // pausas entre comandos só para programas curtos (senão fica lento demais)
       const pause = actions.length > 150 ? 0 : sp.pause;
       const p = { idx: 0, cur: null, last: performance.now(), raf: 0 };

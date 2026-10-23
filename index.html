@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jornada da Tartaruga — Aprenda Programação Desenhando</title>
+  <title>Jornada da Tartaruga — O Dao dos Algoritmos</title>
   <meta name="description" content="Ambiente educacional gratuito para aprender lógica de programação com uma linguagem inspirada na LOGO e na tartaruga gráfica.">
   <meta name="theme-color" content="#0b2454">
   <link rel="icon" href="assets/tartaruga.svg" type="image/svg+xml">
@@ -21,14 +21,17 @@
       </span>
     </a>
 
-    <a class="hud-level" href="#/desafios" title="Ir para o mapa de níveis">
-      <span class="hud-star" aria-hidden="true">★</span>
-      <span class="hud-level-text">
-        <b>Nível <span id="hud-level">1</span></b>
-        <small id="hud-level-name">Primeiros Passos</small>
+    <a class="hud-realm" id="hud-realm-card" href="#/desafios" title="Ver os reinos de cultivo">
+      <span class="hud-insignia" id="hud-insignia" aria-hidden="true">🐢</span>
+      <span class="hud-realm-text">
+        <b id="hud-realm">Reino 1: O Primeiro Traço</b>
+        <small id="hud-stage">Estágio Inicial · Discípulo Mundano</small>
       </span>
-      <span class="hud-bar" id="hud-progressbar" role="progressbar" aria-label="Níveis concluídos" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hud-bar"></i></span>
-      <b class="hud-count"><span id="hud-done">0</span> / <span id="hud-level-total">15</span></b>
+      <span class="hud-qi">
+        <span class="qi-label">Qi</span>
+        <span class="qi-bar" id="hud-qibar" role="progressbar" aria-label="Energia espiritual (Qi) até o rompimento do reino" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="hud-qi"></i></span>
+        <b id="hud-qi-pct">0%</b>
+      </span>
     </a>
 
     <div class="hud-stars" id="hud-stars" role="img" aria-label="Estrelas do nível"></div>
@@ -101,6 +104,7 @@
   <script src="js/turtle.js"></script>
   <script src="js/checker.js"></script>
   <script src="js/levels.js"></script>
+  <script src="js/cultivo.js"></script>
   <script src="js/fractals.js"></script>
   <script src="js/tutorial.js"></script>
   <script src="js/examples.js"></script>

@@ -165,18 +165,9 @@ svg { flex: none; }
 .brand-title em { font-style: normal; color: var(--green); }
 .brand-sub { font-size: 0.98rem; color: var(--muted); }
 
-.hud-level {
   display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text);
   background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 14px; padding: 8px 16px;
 }
-.hud-level:hover { border-color: var(--link); }
-.hud-star { font-size: 1.8rem; color: var(--yellow); text-shadow: 0 2px 6px rgba(250, 204, 21, 0.35); }
-.hud-level-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 110px; }
-.hud-level-text b { font-size: 1.05rem; }
-.hud-level-text small { color: var(--muted); font-size: 0.85rem; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-bar { width: 170px; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; display: inline-block; }
-.hud-bar i { display: block; height: 100%; width: 3%; background: linear-gradient(90deg, #22c55e, #4ade80); border-radius: inherit; transition: width 0.4s; }
-.hud-count { font-size: 0.95rem; white-space: nowrap; }
 .hud-stars { display: flex; gap: 4px; font-size: 2rem; line-height: 1; color: #c7d4ee; }
 .hud-stars .on { color: var(--yellow); text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); }
 
@@ -432,30 +423,6 @@ input[type="range"] { accent-color: var(--green); flex: 1; min-width: 110px; }
 
 /* ------------------------------ Mapa ------------------------------------ */
 .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
-.map-wrap { position: relative; background: rgba(8, 28, 70, 0.35); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--radius); }
-.map { list-style: none; margin: 0; padding: 20px 0 30px; position: relative; display: flex; flex-direction: column; align-items: center; gap: 22px; }
-.map-path { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.map-path path { fill: none; stroke: rgba(255, 255, 255, 0.45); stroke-width: 5; stroke-dasharray: 2 12; stroke-linecap: round; }
-.map-node { display: flex; align-items: center; gap: 14px; transform: translateX(var(--off)); position: relative; z-index: 1; width: 290px; }
-.node-btn {
-  width: 68px; height: 68px; flex: none; border-radius: 50%; display: grid; place-items: center;
-  background: var(--panel); border: 3px solid var(--line); text-decoration: none; box-shadow: var(--shadow); transition: transform 0.15s;
-}
-.node-icon { font-size: 1.8rem; line-height: 1; }
-a.node-btn:hover { transform: scale(1.08); }
-.node-text { display: flex; flex-direction: column; line-height: 1.3; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
-.node-text small { font-size: 0.85rem; color: #dbe8ff; }
-.map-node.done .node-btn { background: #14532d; border-color: var(--green); }
-.map-node.open .node-btn { border-color: var(--yellow); }
-.map-node.current .node-btn { animation: pulse 2s infinite; }
-.map-node.open .node-text small { color: var(--yellow); font-weight: 800; }
-.map-node.locked .node-btn { background: rgba(12, 38, 87, 0.6); border-style: dashed; opacity: 0.85; }
-.map-node.locked .node-text { color: #c7d6ee; }
-.map-node.start .node-btn { background: var(--green-strong); border-color: #86efac; }
-.map-node.finish .node-btn { background: #713f12; border-color: var(--yellow); }
-.map-node.finish.done .node-btn { background: var(--yellow); }
-.map-node.future .node-btn { background: #2e1065; border-color: #a78bfa; border-style: dashed; }
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.25), var(--shadow); } 50% { box-shadow: 0 0 0 11px rgba(250, 204, 21, 0.15), var(--shadow); } }
 .map-side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 64px; }
 .big-number { font-size: 2.6rem; font-weight: 800; margin: 0; line-height: 1.1; }
 .big-number small { font-size: 1rem; font-weight: 600; color: var(--muted); }
@@ -655,7 +622,6 @@ input[aria-invalid="true"] { border-color: var(--red) !important; }
 
 /* --------------------------- Responsivo --------------------------------- */
 @media (max-width: 1400px) {
-  .hud-bar { width: 120px; }
   .brand-title { font-size: 1.5rem; }
 }
 @media (max-width: 1280px) {
@@ -673,8 +639,6 @@ input[aria-invalid="true"] { border-color: var(--red) !important; }
 }
 @media (max-width: 900px) {
   .app-header { padding: 10px 14px; }
-  .hud-level { order: 3; width: 100%; }
-  .hud-bar { flex: 1; }
   .level-layout { grid-template-columns: 1fr; }
   .level-info { position: static; max-height: none; }
   .ws-side, .level-layout .ws-side { grid-template-columns: 1fr; }
@@ -699,7 +663,6 @@ input[aria-invalid="true"] { border-color: var(--red) !important; }
   .hbtn, .avatar-btn { min-height: 46px; }
   .brand-logo { width: 44px; height: 44px; }
   .brand-title { font-size: 1.25rem; }
-  .map-node { width: 230px; transform: translateX(calc(var(--off) * 0.4)); }
   .angle-list { columns: 1; }
   .tbtn span { display: none; }
   .tbtn-run span { display: inline; }
@@ -737,3 +700,149 @@ input[aria-invalid="true"] { border-color: var(--red) !important; }
 .admin-solution .snippet { margin-bottom: 6px; }
 body.is-admin .main-nav a[data-nav="professor"] { color: #1e293b; background: var(--yellow); border-color: var(--yellow); }
 body.is-admin .main-nav a[data-nav="professor"]::after { content: " · ativo"; font-size: 0.8em; }
+
+/* =========================================================================
+ * O Dao dos Algoritmos — reinos de cultivo
+ * Cada reino tem uma cor de aura (--aura), definida em js/cultivo.js.
+ * ========================================================================= */
+/* cabeçalho: reino, estágio, título e barra de Qi */
+.hud-realm {
+  --aura: #4ade80;
+  display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--text);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--aura) 16%, transparent), rgba(255, 255, 255, 0.03));
+  border: 1px solid color-mix(in srgb, var(--aura) 55%, var(--line)); border-radius: 14px; padding: 8px 16px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--aura) 22%, transparent);
+}
+.hud-realm:hover { border-color: var(--aura); }
+.hud-insignia {
+  width: 46px; height: 46px; flex: none; display: grid; place-items: center; font-size: 1.6rem; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--aura) 40%, transparent), transparent 70%);
+  border: 2px solid var(--aura); box-shadow: 0 0 12px color-mix(in srgb, var(--aura) 60%, transparent);
+}
+.hud-realm-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.hud-realm-text b { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.hud-realm-text small { color: var(--muted); font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.hud-qi { display: flex; align-items: center; gap: 8px; }
+.qi-label { font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; color: var(--aura, var(--yellow)); }
+.qi-bar { width: 130px; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; display: inline-block; flex: none; }
+.qi-bar i { display: block; height: 100%; width: 3%; border-radius: inherit; transition: width 0.5s;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--aura, #22c55e) 60%, #fff), var(--aura, #22c55e));
+  box-shadow: 0 0 8px var(--aura, #22c55e); }
+.hud-qi b { font-size: 0.9rem; min-width: 3ch; }
+
+/* mapa dos reinos */
+.realms { display: flex; flex-direction: column; gap: 16px; }
+.realm {
+  --aura: #4ade80;
+  position: relative; border-radius: 18px; padding: 16px 18px 18px; overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--aura) 22%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(12, 38, 87, 0.96), rgba(9, 28, 66, 0.96));
+  border: 1px solid color-mix(in srgb, var(--aura) 45%, var(--line));
+  box-shadow: var(--shadow);
+}
+.realm::after { /* moldura tracejada fina, estilo pergaminho */
+  content: ""; position: absolute; inset: 6px; border-radius: 13px; pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--aura) 30%, transparent);
+}
+.realm-current { box-shadow: 0 0 0 2px var(--aura), 0 0 28px color-mix(in srgb, var(--aura) 35%, transparent), var(--shadow); }
+.realm-selado { filter: saturate(0.35); opacity: 0.82; }
+.realm-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; position: relative; z-index: 1; }
+.realm-seal {
+  width: 62px; height: 62px; display: grid; place-items: center; font-size: 2rem; border-radius: 50%;
+  border: 2px solid var(--aura); background: radial-gradient(circle, color-mix(in srgb, var(--aura) 35%, transparent), rgba(0, 0, 0, 0.2) 70%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--aura) 50%, transparent);
+}
+.realm-kicker { margin: 0; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--aura); }
+.realm-title h3 { margin: 2px 0 4px; font-size: 1.35rem; }
+.realm-desc { margin: 0 0 4px; color: #dbe8ff; font-size: 0.92rem; }
+.realm-focus { margin: 0; color: var(--muted); font-size: 0.84rem; }
+.realm-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.realm-status small { color: var(--muted); }
+.realm-badge { font-weight: 800; font-size: 0.82rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--aura); background: color-mix(in srgb, var(--aura) 18%, transparent); }
+.realm-rompido .realm-badge { background: var(--aura); color: #111827; }
+.qi-line { display: flex; align-items: center; gap: 8px; }
+.realm-stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; position: relative; z-index: 1; }
+.stage { background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line-soft); border-radius: 12px; padding: 10px; }
+.stage-pico { border-color: color-mix(in srgb, var(--aura) 55%, transparent); background: color-mix(in srgb, var(--aura) 8%, rgba(255, 255, 255, 0.03)); }
+.stage.locked { opacity: 0.6; }
+.stage-name { margin: 0 0 8px; font-weight: 800; font-size: 0.88rem; }
+.stage-name small { font-weight: 600; color: var(--muted); }
+.stage-levels { display: flex; flex-direction: column; gap: 8px; }
+.lvl-card {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center;
+  padding: 8px 10px; border-radius: 10px; text-decoration: none; color: var(--text);
+  background: var(--panel-2); border: 1px solid var(--line); transition: transform 0.12s, border-color 0.12s;
+}
+a.lvl-card:hover { transform: translateY(-2px); border-color: var(--aura); }
+.lvl-num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; font-weight: 800; background: rgba(255, 255, 255, 0.1); }
+.lvl-icon { font-size: 1.4rem; line-height: 1; }
+.lvl-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.lvl-text b { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lvl-text small { color: var(--muted); font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lvl-state { font-size: 0.78rem; font-weight: 700; }
+.lvl-card.done { border-color: color-mix(in srgb, var(--green) 70%, transparent); background: color-mix(in srgb, var(--green) 10%, var(--panel-2)); }
+.lvl-card.done .lvl-num { background: var(--green-strong); }
+.lvl-card.open .lvl-state { color: var(--aura); }
+.lvl-card.locked { border-style: dashed; color: #c7d6ee; }
+.lvl-card.current { box-shadow: 0 0 0 2px var(--aura), 0 0 16px color-mix(in srgb, var(--aura) 45%, transparent); animation: aura-pulse 2.2s infinite; }
+@keyframes aura-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--aura), 0 0 10px color-mix(in srgb, var(--aura) 30%, transparent); } 50% { box-shadow: 0 0 0 2px var(--aura), 0 0 22px color-mix(in srgb, var(--aura) 60%, transparent); } }
+.cultivator { border-color: color-mix(in srgb, var(--aura) 55%, var(--line)); }
+.cult-realm { font-weight: 800; margin: 0 0 2px; }
+.cult-stage { color: var(--muted); margin-bottom: 8px; }
+
+/* tela do desafio */
+.realm-line {
+  margin: 0; padding: 6px 10px; border-radius: 10px; font-size: 0.85rem;
+  background: color-mix(in srgb, var(--aura) 14%, transparent); border: 1px solid color-mix(in srgb, var(--aura) 45%, transparent);
+}
+.ch-shape { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 1px; }
+.ch-lore { margin: 6px 0 0; font-style: italic; color: #c7d6ee; font-size: 0.88rem; }
+.chip-limit { background: rgba(251, 191, 36, 0.18); border-color: #fbbf24; color: #fde68a; }
+
+/* editor: palavras da linguagem avançada */
+.tk-key { color: #f9a8d4; font-weight: 800; }
+.tk-var { color: #7dd3fc; font-style: italic; }
+.tk-proc { color: #5eead4; font-weight: 700; }
+.tk-op { color: #fda4af; }
+.cmd-tile.cmd-advanced { display: none; }
+.show-advanced .cmd-tile.cmd-advanced { display: flex; }
+.cmd-advanced .cmd-badge { font-size: 0.82rem; }
+
+/* Rompimento de Reino (Breakthrough) */
+dialog.breakthrough-modal { border-color: var(--yellow); box-shadow: 0 0 60px rgba(250, 204, 21, 0.35), var(--shadow-lg); }
+.breakthrough { --aura: #fde047; text-align: center; padding: 6px 0 4px; }
+.bt-aura {
+  width: 130px; height: 130px; margin: 6px auto 12px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  background: radial-gradient(circle, color-mix(in srgb, var(--aura) 65%, #fff) 0%, color-mix(in srgb, var(--aura) 30%, transparent) 45%, transparent 70%);
+  animation: bt-glow 2.4s ease-in-out infinite;
+}
+.bt-aura::before {
+  content: ""; position: absolute; inset: -14px; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--aura) 70%, transparent), transparent 30%, color-mix(in srgb, var(--aura) 70%, transparent), transparent 60%, color-mix(in srgb, var(--aura) 70%, transparent), transparent);
+  animation: bt-spin 6s linear infinite; opacity: 0.6;
+}
+.bt-aura span { font-size: 3.4rem; position: relative; filter: drop-shadow(0 0 10px var(--aura)); }
+@keyframes bt-glow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes bt-spin { to { transform: rotate(360deg); } }
+.bt-kicker { margin: 0; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem; font-weight: 800; color: var(--aura); }
+.bt-title { font-size: 2rem; font-weight: 900; margin: 4px 0 10px; text-shadow: 0 0 18px color-mix(in srgb, var(--aura) 60%, transparent); }
+.bt-quote { margin: 0 auto 12px; max-width: 46ch; font-style: italic; font-size: 1.08rem; color: #e2ecff; border: 0; }
+.bt-rank { color: var(--aura); font-size: 1.15rem; }
+.bt-next { margin-top: 10px; }
+
+/* início e professor */
+.small-lead { font-size: 0.98rem; }
+.sol-realm { margin: 18px 0 4px; padding: 6px 12px; border-radius: 10px; background: color-mix(in srgb, var(--aura) 16%, transparent); border-left: 4px solid var(--aura); }
+
+@media (max-width: 1400px) {
+  .qi-bar { width: 90px; }
+  .hud-realm-text b, .hud-realm-text small { max-width: 200px; }
+}
+@media (max-width: 900px) {
+  .hud-realm { order: 3; width: 100%; }
+  .hud-qi { margin-left: auto; }
+  .realm-head { grid-template-columns: auto minmax(0, 1fr); }
+  .realm-status { grid-column: 1 / -1; align-items: flex-start; text-align: left; }
+  .realm-stages { grid-template-columns: 1fr; }
+}

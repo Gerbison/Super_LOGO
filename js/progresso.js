@@ -2,10 +2,11 @@
  * progresso.js — Código de progresso (o "save" que viaja entre computadores)
  * -------------------------------------------------------------------------
  * Mesmo sistema do AlgoBot: sem banco de dados, o progresso cabe num código
- * curto, por exemplo  TAR-3ZZZZK0-7QXM
+ * curto, por exemplo  TAR2-ZZZZZG0000000000-7QXM
  *
- *   TAR      prefixo do jogo
- *   bloco 1  estrelas de cada nível (2 bits por nível, na ordem de LEVELS)
+ *   TAR2     prefixo do jogo (versão 2: 36 desafios; códigos antigos "TAR" de
+ *            15 níveis continuam sendo lidos)
+ *   bloco 1  estrelas de cada desafio (2 bits por desafio, na ordem dos ids)
  *            + aulas do tutorial concluídas (1 bit por aula)
  *   bloco 2  assinatura: resumo (hash) do nome do aluno
  *
@@ -21,7 +22,8 @@
 (function (root) {
   'use strict';
 
-  const PREFIXO = 'TAR';
+  const PREFIXO = 'TAR2';      // versão atual (36 desafios)
+  const PREFIXO_V1 = 'TAR';     // versão antiga (15 níveis, 7 aulas) — ainda é lida
   const NOME_JOGO = 'Jornada da Tartaruga';
 
   /* Base32 sem I, L, O e U: o aluno não confunde 1/I e 0/O ao copiar à mão. */
@@ -60,18 +62,21 @@
     return bitsParaBase32((hashNome(nome) & 0xfffff).toString(2).padStart(20, '0'));
   }
 
+  const porId = (lista) => lista.slice().sort((x, y) => x.id - y.id);
+
   /**
-   * Gera o código a partir do progresso salvo (Store.data).
-   * levels = Levels.LEVELS, lessons = TUTORIAL.
+   * Gera o código (versão TAR2) a partir do progresso salvo (Store.data).
+   * levels = Levels.LEVELS, lessons = TUTORIAL. A ordem é sempre por id, então
+   * reorganizar a jornada (reinos) não muda o significado do código.
    */
   function gerarCodigo(data, levels, lessons) {
     let bits = '';
-    levels.forEach((l) => {
+    porId(levels).forEach((l) => {
       const r = data.levels[l.id];
       const e = r && r.completed ? Math.max(1, Math.min(3, r.stars || 1)) : 0;
       bits += e.toString(2).padStart(2, '0');
     });
-    lessons.forEach((a) => { bits += data.lessons[a.id] ? '1' : '0'; });
+    porId(lessons).forEach((a) => { bits += data.lessons[a.id] ? '1' : '0'; });
     return `${PREFIXO}-${bitsParaBase32(bits)}-${assinatura(data.nome)}`;
   }
 
@@ -82,25 +87,30 @@
   }
 
   /**
-   * Lê um código. Devolve { valido, estrelas[], aulas[], assinatura } ou
-   * { valido: false, motivo }.
+   * Lê um código (TAR2 atual ou TAR antigo). Devolve
+   *   { valido, versao, estrelas: {id: 0..3}, aulas: {id: bool}, assinatura }
+   * ou { valido: false, motivo }.
    */
   function decodificar(codigo, levels, lessons) {
     const partes = normalizar(codigo).split('-');
-    if (partes.length !== 3 || partes[0] !== PREFIXO) {
-      return { valido: false, motivo: `O código deve ter o formato ${PREFIXO}-XXXXXXXX-XXXX.` };
+    if (partes.length !== 3 || (partes[0] !== PREFIXO && partes[0] !== PREFIXO_V1)) {
+      return { valido: false, motivo: `O código deve ter o formato ${PREFIXO}-XXXXXXXXXXXXXXXXX-XXXX.` };
     }
     const bits = base32ParaBits(partes[1]);
     if (bits === null || base32ParaBits(partes[2]) === null || partes[2].length !== 4) {
       return { valido: false, motivo: 'O código tem letras que não existem no formato. Confira se copiou certinho.' };
     }
-    const precisa = levels.length * 2 + lessons.length;
-    if (bits.length < precisa) {
+    const v1 = partes[0] === PREFIXO_V1;
+    // TAR antigo: 15 níveis (ids 1-15) e 7 aulas (ids 1-7), na ordem dos ids
+    const levelIds = v1 ? Array.from({ length: 15 }, (_, i) => i + 1) : porId(levels).map((l) => l.id);
+    const lessonIds = v1 ? Array.from({ length: 7 }, (_, i) => i + 1) : porId(lessons).map((a) => a.id);
+    if (bits.length < levelIds.length * 2 + lessonIds.length) {
       return { valido: false, motivo: 'O código está incompleto. Confira se copiou ele inteiro.' };
     }
-    const estrelas = levels.map((_, i) => parseInt(bits.slice(i * 2, i * 2 + 2), 2));
-    const aulas = lessons.map((_, i) => bits[levels.length * 2 + i] === '1');
-    return { valido: true, estrelas, aulas, assinatura: partes[2] };
+    const estrelas = {}, aulas = {};
+    levelIds.forEach((id, i) => { estrelas[id] = parseInt(bits.slice(i * 2, i * 2 + 2), 2); });
+    lessonIds.forEach((id, i) => { aulas[id] = bits[levelIds.length * 2 + i] === '1'; });
+    return { valido: true, versao: v1 ? 1 : 2, estrelas, aulas, assinatura: partes[2] };
   }
 
   function conferirNome(codigo, nome, levels, lessons) {
@@ -122,21 +132,22 @@
     }
 
     let niveis = 0, aulas = 0;
-    levels.forEach((l, i) => {
-      const e = lido.estrelas[i];
+    levels.forEach((l) => {
+      const e = lido.estrelas[l.id];
       if (!e) return;
       const atual = data.levels[l.id];
       if (!atual || !atual.completed || (atual.stars || 0) < e) {
         // o número de comandos não viaja no código: usamos o maior que ainda vale essas estrelas
-        data.levels[l.id] = { completed: true, stars: e, size: e >= 3 ? l.par : (atual && atual.size) || l.par + 1 };
+        const par = root.Levels && root.Levels.parOf ? root.Levels.parOf(l) : l.par;
+        data.levels[l.id] = { completed: true, stars: e, size: e >= 3 ? par : (atual && atual.size) || par + 1 };
         niveis++;
       }
     });
-    lessons.forEach((a, i) => {
-      if (lido.aulas[i] && !data.lessons[a.id]) { data.lessons[a.id] = true; aulas++; }
+    lessons.forEach((a) => {
+      if (lido.aulas[a.id] && !data.lessons[a.id]) { data.lessons[a.id] = true; aulas++; }
     });
     data.nome = nome;
-    return { ok: true, niveis, aulas };
+    return { ok: true, niveis, aulas, versao: lido.versao };
   }
 
   /* ----------------------- "Salvar e continuar depois" ------------------- */

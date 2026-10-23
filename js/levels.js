@@ -12,7 +12,11 @@
  *   challenge    o desafio, em linguagem simples (o que o aluno lê)
  *   solution     um código que desenha o alvo (gera o desenho-alvo)
  *   par          meta de tamanho do código para ganhar ⭐⭐⭐ (nº de comandos)
- *   repeatUseful true se REPITA é a forma "apropriada" (vale a 2ª estrela)
+ *   technique    técnica que vale a 2ª estrela: 'REPITA' | 'PARA' | 'REPCONT' |
+ *                'RECURSAO' | null (nos antigos: repeatUseful true = 'REPITA')
+ *   limit        (Reino 4) máximo de comandos — acima disso não conta
+ *   title/shape/lore  nome de cultivo, forma geométrica e ambientação
+ *   (reino e estágio de cada desafio ficam em js/cultivo.js)
  *   requires     comandos obrigatórios. Ex.: ['REPITA'] ou [['PD','PE']] (um dos dois)
  *   match        'exact' (mesmo lugar) ou 'shape' (aceita deslocar/espelhar/girar 90°)
  *   tolerance    distância aceita, em passos (padrão 5)
@@ -318,13 +322,452 @@
     },
   ];
 
-  /* Nível futuro — arquitetura preparada (ver js/fractals.js). */
-  const FUTURE_LEVELS = [
+  /* =======================================================================
+   * O Dao dos Algoritmos — tema de cultivo dos 15 desafios originais.
+   * Os ids NÃO mudam (o progresso salvo e o código TAR- dependem deles).
+   *   title  nome de cultivo   · shape  a forma geométrica (subtítulo)
+   *   lore   frase de ambientação mostrada acima do enunciado
+   * ===================================================================== */
+  const CULTIVO_ORIGINAIS = {
+    1: { title: 'O Despertar', shape: 'Linha reta', lore: 'A tartaruga espiritual abre os olhos. Todo caminho começa com um único traço.' },
+    2: { title: 'O Passo de Retorno', shape: 'Ida e volta', lore: 'O cultivador que sabe avançar também sabe voltar à origem.' },
+    3: { title: 'O Primeiro Giro do Qi', shape: 'Ângulo reto', lore: 'A energia muda de direção: o primeiro giro desperta o Qi.' },
+    4: { title: 'O Selo Quadrado', shape: 'Quadrado', lore: 'Quatro lados, quatro cantos: o primeiro selo do Reino Mundano.' },
+    5: { title: 'O Ciclo dos Quatro Ventos', shape: 'Quadrado com REPITA', lore: 'Os quatro ventos sopram em ciclo — o que se repete pode ser dito uma só vez.' },
+    6: { title: 'O Portão Retangular', shape: 'Retângulo', lore: 'O portão do templo tem lados desiguais, mas o padrão ainda se repete.' },
+    7: { title: 'A Tríade Harmônica', shape: 'Triângulo', lore: 'Três lados em harmonia: a volta completa dividida por três.' },
+    8: { title: 'A Estrela das Cinco Virtudes', shape: 'Estrela de 5 pontas', lore: 'Para tocar as cinco virtudes, a tartaruga precisa girar além de uma volta.' },
+    9: { title: 'O Círculo do Ciclo Eterno', shape: 'Círculo', lore: 'O ciclo eterno nasce de passos pequenos e giros pequenos.' },
+    10: { title: 'O Pavilhão do Mestre', shape: 'Casa', lore: 'O pavilhão é feito de partes: paredes e telhado.' },
+    11: { title: 'O Sol do Meio-Dia', shape: 'Sol com raios', lore: 'A cada passo do círculo, um raio de energia se projeta para fora.' },
+    12: { title: 'A Flor de Lótus', shape: 'Flor de 6 pétalas', lore: 'Um ciclo dentro de outro ciclo faz a flor de lótus desabrochar.' },
+    13: { title: 'A Tríade das Formas', shape: 'Composição', lore: 'Quadrado, triângulo e círculo nascem do mesmo ponto de origem.' },
+    14: {
+      title: 'O Selo Oculto', shape: 'Desafio misterioso', limit: 6,
+      lore: 'Um selo antigo, sem pergaminho que o explique. Leia a forma e economize energia.',
+    },
+    15: {
+      title: 'A Mandala do Refinamento', shape: 'Mandala', limit: 12, final: false,
+      lore: 'A mandala dos mestres antigos: quadrados que giram e uma flor de círculos.',
+      success: 'A mandala está completa — e com pouca energia desperdiçada!',
+      concept: {
+        title: '💡 Refinamento',
+        text: 'Você combinou <b>repetições aninhadas</b> e <b>decomposição</b> gastando poucos comandos. Cada linha a menos é energia (Qi) economizada.',
+      },
+    },
+  };
+
+  /* =======================================================================
+   * Desafios novos (ids 16 a 36). Ordem e reinos em js/cultivo.js.
+   * ===================================================================== */
+  const NOVOS = [
+    /* --------------------------- Reino 1 ------------------------------ */
     {
-      id: 'fractais', icon: '❄️', title: 'Laboratório de Fractais', comingSoon: true,
-      challenge: 'Em breve: criar a Curva de Koch usando procedimentos e recursividade.',
+      id: 16, icon: '➖', title: 'O Traço Partido', shape: 'Linha tracejada',
+      lore: 'O cultivador aprende a mover-se sem deixar rastro — e a voltar a marcar o caminho.',
+      challenge: 'Desenhe uma linha de 3 traços de 40 passos, com espaços de 20 passos entre eles.',
+      solution: 'PF 40\nLEVANTE\nPF 20\nBAIXE\nPF 40\nLEVANTE\nPF 20\nBAIXE\nPF 40',
+      par: 9, technique: null, requires: ['LEVANTE', 'BAIXE'], match: 'shape',
+      hints: [
+        'Para andar sem desenhar, levante a caneta.',
+        'LEVANTE antes do espaço, BAIXE depois dele.',
+        'Traço de 40, espaço de 20, traço de 40, espaço de 20, traço de 40.',
+      ],
+      success: 'Você controla quando a energia deixa marca!',
+      concept: { title: '💡 Estado da caneta', text: 'A caneta tem um <b>estado</b>: abaixada ou levantada. O mesmo comando PF desenha ou não, dependendo desse estado.' },
+      goal: 'Controlar o estado da caneta (LEVANTE/BAIXE).',
+      commands: ['PF', 'LEVANTE', 'BAIXE'], concepts: ['Estado', 'Sequência'],
+      teacherTip: 'Pergunte: o que muda se esquecermos o último BAIXE?',
+    },
+    {
+      id: 17, icon: '🚩', title: 'A Bandeira do Clã', shape: 'Bandeira',
+      lore: 'Para provar seu despertar, erga a bandeira do clã com traços precisos.',
+      challenge: 'Desenhe um mastro de 150 passos e, no topo, uma bandeira retangular de 80 de largura por 50 de altura, para a direita.',
+      solution: 'PF 150\nPD 90\nPF 80\nPD 90\nPF 50\nPD 90\nPF 80',
+      par: 7, technique: null, requires: [], match: 'shape',
+      hints: [
+        'Comece pelo mastro: ande para cima.',
+        'No topo, a bandeira é um retângulo de 80 por 50 que fica à direita do mastro.',
+        'Depois do mastro: gire, 80, gire, 50, gire, 80. O lado do mastro já existe!',
+      ],
+      success: 'A bandeira do clã tremula. Você rompeu o primeiro gargalo!',
+      concept: { title: '💡 Precisão', text: 'Programas fazem <b>exatamente</b> o que está escrito. Medir as distâncias e os giros antes de escrever evita erros.' },
+      goal: 'Combinar movimentos e giros com precisão de medidas.',
+      commands: ['PF', 'PD'], concepts: ['Sequência', 'Precisão'],
+      teacherTip: 'Peça que desenhem a bandeira no papel quadriculado e anotem cada comando antes de digitar.',
+    },
+    /* --------------------------- Reino 2 ------------------------------ */
+    {
+      id: 18, icon: '⬡', title: 'O Hexágono da Colmeia', shape: 'Hexágono',
+      lore: 'As abelhas espirituais constroem com seis lados — o ciclo perfeito para guardar energia.',
+      challenge: 'Desenhe um hexágono com 6 lados de 80 passos.',
+      solution: 'REPITA 6 [PF 80 PD 60]',
+      par: 3, technique: 'REPITA', requires: [], match: 'shape',
+      hints: [
+        'Um hexágono tem 6 lados iguais.',
+        'A volta completa (360°) dividida em 6 cantos dá o giro de cada canto.',
+        'REPITA 6 [ ... ] com um passo e um giro dentro.',
+      ],
+      success: 'O hexágono está perfeito — a colmeia agradece!',
+      concept: { title: '💡 Generalizando', text: 'Triângulo: 360÷3. Quadrado: 360÷4. Hexágono: 360÷6. Quando uma regra vale para todos os casos, você descobriu uma <b>generalização</b>.' },
+      goal: 'Aplicar a regra 360° ÷ n a um novo polígono.',
+      commands: ['REPITA', 'PF', 'PD'], concepts: ['Loop', 'Generalização'],
+      teacherTip: 'Peça para preverem o ângulo de um octógono antes de testar.',
+    },
+    /* --------------------------- Reino 3 ------------------------------ */
+    {
+      id: 19, icon: '❋', title: 'A Roseta de Doze Pétalas', shape: 'Roseta de 12 hexágonos',
+      lore: 'Doze hexágonos girando em torno da origem formam a roseta do Pico Espiritual.',
+      challenge: 'Desenhe 12 hexágonos (lados de 50) girando 30° entre eles em volta do ponto inicial.',
+      solution: 'REPITA 12 [REPITA 6 [PF 50 PD 60] PD 30]',
+      par: 5, technique: 'REPITA', requires: ['REPITA'], match: 'shape',
+      hints: [
+        'Primeiro desenhe um hexágono de lado 50.',
+        'Depois de cada hexágono, gire 30°. Quantos hexágonos fecham a volta?',
+        'Um REPITA dentro de outro REPITA.',
+      ],
+      success: 'A roseta floresce em doze direções!',
+      concept: { title: '🔁 Laço duplo', text: 'O laço de dentro desenha uma forma; o laço de fora gira e repete essa forma. Isso cria <b>simetria rotacional</b>.' },
+      goal: 'Usar laços aninhados para criar simetria rotacional.',
+      commands: ['REPITA', 'PF', 'PD'], concepts: ['Loop aninhado', 'Simetria'],
+      teacherTip: 'Compare 12 hexágonos/30° com 6 hexágonos/60°: o que muda no desenho?',
+    },
+    {
+      id: 20, icon: '✴️', title: 'A Roseta de Vinte e Quatro Pontas', shape: 'Roseta de 24 triângulos',
+      lore: 'No pico do terceiro reino, vinte e quatro triângulos giram como uma mandala viva.',
+      challenge: 'Desenhe 24 triângulos (lados de 100) girando 15° entre eles em volta do ponto inicial.',
+      solution: 'REPITA 24 [REPITA 3 [PF 100 PD 120] PD 15]',
+      par: 5, technique: 'REPITA', requires: ['REPITA'], match: 'shape',
+      hints: [
+        'A forma que se repete é um triângulo de lado 100.',
+        'Quanto girar entre os triângulos para fazer 24 deles darem a volta completa?',
+        '360 ÷ 24 = 15. Use um REPITA por dentro (triângulo) e outro por fora.',
+      ],
+      success: 'Vinte e quatro pontas! Você rompeu o gargalo da Geometria Espiritual.',
+      concept: { title: '💡 Densidade', text: 'Mudar só dois números (quantas vezes e quanto girar) transforma uma forma simples numa mandala densa. Pequenas mudanças, grandes efeitos.' },
+      goal: 'Dominar laços aninhados com cálculo de giro (360 ÷ n).',
+      commands: ['REPITA', 'PF', 'PD'], concepts: ['Loop aninhado', 'Simetria'],
+      teacherTip: 'Desafie a turma a criar a própria roseta trocando a forma interna.',
+    },
+    /* --------------------------- Reino 4 ------------------------------ */
+    {
+      id: 21, icon: '🪜', title: 'A Escadaria do Templo', shape: 'Escada de 8 degraus',
+      lore: 'Um discípulo mundano escreve dezesseis linhas para subir a escada. O refinado escreve uma.',
+      challenge: 'Desenhe uma escada de 8 degraus (25 passos para cima e 25 para a direita em cada degrau) usando no máximo 6 comandos.',
+      solution: 'REPITA 8 [PF 25 PD 90 PF 25 PE 90]',
+      par: 5, limit: 6, technique: 'REPITA', requires: [], match: 'shape',
+      hints: [
+        'Um degrau é: subir, virar, andar, desvirar.',
+        'Escreva um degrau e repita-o.',
+        'REPITA 8 [ subir 25, girar à direita, andar 25, girar à esquerda ].',
+      ],
+      success: 'Oito degraus com uma linha só. Refinamento puro!',
+      concept: { title: '💡 Código enxuto', text: 'Programadores procuram o <b>menor código claro</b> que resolve o problema: menos linhas, menos erros, mais fácil de mudar.' },
+      goal: 'Encontrar o bloco mínimo que se repete (limite de comandos).',
+      commands: ['REPITA', 'PF', 'PD', 'PE'], concepts: ['Otimização', 'Loop'],
+      teacherTip: 'Mostre uma solução de 32 comandos e peça para a turma reduzir.',
+    },
+    {
+      id: 22, icon: '🎋', title: 'O Pente de Bambu', shape: 'Pente (dentes e base)',
+      lore: 'Sete hastes de bambu presas a uma base. A técnica refinada faz ida e volta sem desperdício.',
+      challenge: 'Desenhe 7 dentes de 80 passos, espaçados de 20 em 20 sobre uma base, usando no máximo 7 comandos.',
+      solution: 'REPITA 7 [PF 80 PT 80 PD 90 PF 20 PE 90]',
+      par: 6, limit: 7, technique: 'REPITA', requires: [], match: 'shape',
+      hints: [
+        'Cada dente é uma ida e volta: PF e PT com o mesmo número.',
+        'Depois do dente, a tartaruga anda 20 para o lado (base) e volta a olhar para cima.',
+        'REPITA 7 [ dente (ida e volta), virar, andar 20, desvirar ].',
+      ],
+      success: 'O pente de bambu está pronto — sem um movimento desperdiçado.',
+      concept: { title: '💡 Ida e volta', text: 'PF seguido de PT com o mesmo valor desenha e devolve a tartaruga ao lugar. É um truque para desenhar "galhos" sem perder a posição.' },
+      goal: 'Usar ida e volta (PF/PT) dentro de repetições.',
+      commands: ['REPITA', 'PF', 'PT', 'PD', 'PE'], concepts: ['Otimização', 'Ida e volta'],
+      teacherTip: 'Pergunte por que a base fica 20 passos mais comprida que o último dente.',
+    },
+    {
+      id: 23, icon: '🏯', title: 'A Muralha dos Doze Blocos', shape: 'Moldura de quadrados',
+      lore: 'A muralha que protege o templo tem doze blocos ao redor do pátio.',
+      challenge: 'Desenhe a muralha: quadrados de 40 formando a moldura de um pátio. Use no máximo 8 comandos.',
+      solution: 'REPITA 4 [REPITA 3 [REPITA 4 [PF 40 PD 90] PF 40] PD 90]',
+      par: 7, limit: 8, technique: 'REPITA', requires: ['REPITA'], match: 'shape', tolerance: 6,
+      hints: [
+        'Comece desenhando 3 quadrados de 40 em fila, um em cima do outro.',
+        'Depois de cada fila de 3, gire 90° — são 4 filas.',
+        'Três REPITA, um dentro do outro: quadrado, fila e muralha.',
+      ],
+      success: 'Muralha erguida com três níveis de repetição!',
+      concept: { title: '🔁 Três níveis', text: 'Quadrado → fila de quadrados → muralha. Cada nível de repetição constrói em cima do anterior: isso é <b>abstração em camadas</b>.' },
+      goal: 'Construir abstrações em camadas com três laços aninhados.',
+      commands: ['REPITA', 'PF', 'PD'], concepts: ['Loop aninhado', 'Abstração'],
+      teacherTip: 'Peça para explicarem em voz alta o que cada REPITA faz.',
+    },
+    {
+      id: 24, icon: '🔯', title: 'O Selo dos Oito Trigramas', shape: 'Octógono com quadrados',
+      lore: 'Os oito trigramas cercam o centro: um quadrado guarda cada lado do octógono.',
+      challenge: 'Desenhe um octógono (lados de 50, girando para a esquerda) com um quadrado de 50 do lado de fora de cada lado. Máximo de 7 comandos.',
+      solution: 'REPITA 8 [REPITA 4 [PF 50 PD 90] PF 50 PE 45]',
+      par: 6, limit: 7, technique: 'REPITA', requires: ['REPITA'], match: 'shape',
+      hints: [
+        'O octógono gira 45° em cada canto (360 ÷ 8).',
+        'Em cada lado, antes de andar, desenhe um quadrado — ele termina onde começou.',
+        'REPITA 8 [ quadrado, lado do octógono, giro ].',
+      ],
+      success: 'O selo dos oito trigramas brilha!',
+      concept: { title: '💡 Forma fechada = volta à origem', text: 'Um quadrado completo devolve a tartaruga ao ponto e à direção iniciais. Por isso dá para "encaixar" formas no meio de outras sem se perder.' },
+      goal: 'Encaixar formas fechadas dentro de outra repetição.',
+      commands: ['REPITA', 'PF', 'PD', 'PE'], concepts: ['Loop aninhado', 'Estado'],
+      teacherTip: 'Peça para trocarem PE por PD no octógono e observarem para onde vão os quadrados.',
+    },
+    /* --------------------------- Reino 5 ------------------------------ */
+    {
+      id: 25, icon: '🌀', title: 'O Redemoinho de Qi', shape: 'Espiral quadrada',
+      lore: 'O Mestre da Matriz enxerga o número de cada volta. A energia cresce a cada giro.',
+      challenge: 'Desenhe uma espiral quadrada de 40 lados: o 1º lado tem 5 passos, o 2º tem 10, o 3º tem 15... Use REPCONT.',
+      solution: 'REPITA 40 [PF REPCONT * 5 PD 90]',
+      par: 3, technique: 'REPCONT', requires: ['REPCONT'], match: 'shape',
+      hints: [
+        'Dentro de um REPITA, REPCONT vale o número da volta: 1, 2, 3...',
+        'O lado da volta 1 tem 5 passos; o da volta 2 tem 10. Qual conta dá isso?',
+        'PF REPCONT * 5 (e um giro de 90° em cada volta).',
+      ],
+      success: 'O redemoinho gira e cresce. Você enxerga além do canvas!',
+      concept: { title: '🔢 Valores que mudam', text: 'REPCONT é um valor que <b>muda a cada volta</b>. Contas com ele (REPCONT * 5) geram padrões que crescem — a base das espirais.', compare: 'Em Python:\nfor volta in range(1, 41):\n    frente(volta * 5)\n    direita(90)' },
+      goal: 'Usar o contador do laço para criar padrões crescentes.',
+      commands: ['REPITA', 'REPCONT', 'PF', 'PD'], concepts: ['Contador', 'Expressões'],
+      teacherTip: 'Mostre a ligação com o "i" do for em outras linguagens.',
+    },
+    {
+      id: 26, icon: '📜', title: 'A Técnica Nomeada', shape: 'Quadrados concêntricos no canto',
+      lore: 'O mestre dá nome à sua técnica. Uma vez nomeada, ela pode ser invocada com qualquer força.',
+      challenge: 'Crie o comando QUADRADO :LADO com PARA ... FIM e desenhe quatro quadrados de 40, 80, 120 e 160 a partir do mesmo canto.',
+      solution: 'PARA QUADRADO :LADO\n  REPITA 4 [PF :LADO PD 90]\nFIM\nQUADRADO 40\nQUADRADO 80\nQUADRADO 120\nQUADRADO 160',
+      technique: 'PARA', requires: ['PARA'], match: 'shape',
+      hints: [
+        'PARA QUADRADO :LADO ... FIM ensina um comando novo. :LADO é o valor que ele recebe.',
+        'Dentro do PARA, use :LADO no lugar do número: REPITA 4 [PF :LADO PD 90].',
+        'Depois do FIM, use o seu comando: QUADRADO 40, QUADRADO 80...',
+      ],
+      success: 'Sua técnica tem nome — e funciona com qualquer tamanho!',
+      concept: { title: '📜 Procedimento e parâmetro', text: 'Você criou um <b>procedimento</b> (uma função) com um <b>parâmetro</b>. Escreve uma vez, usa quantas vezes quiser, com valores diferentes.', compare: 'Em Python:\ndef quadrado(lado):\n    for i in range(4):\n        frente(lado)\n        direita(90)\n\nquadrado(40)\nquadrado(80)' },
+      goal: 'Definir procedimentos com parâmetro (funções).',
+      commands: ['PARA', 'FIM', 'REPITA', 'PF', 'PD'], concepts: ['Procedimento', 'Parâmetro'],
+      teacherTip: 'Peça para criarem TRIANGULO :LADO e HEXAGONO :LADO.',
+    },
+    {
+      id: 27, icon: '🐚', title: 'A Concha de Arquimedes', shape: 'Espiral arquimediana',
+      lore: 'A concha cresce devagar, sempre girando o mesmo ângulo: a espiral de Arquimedes.',
+      challenge: 'Desenhe uma espiral suave: 72 passos girando 15° cada, em que o passo da volta n mede n ÷ 2.',
+      solution: 'REPITA 72 [PF REPCONT / 2 PD 15]',
+      par: 3, technique: 'REPCONT', requires: [], match: 'shape',
+      hints: [
+        'É parecida com o redemoinho, mas o giro é pequeno (15°) e o passo cresce devagar.',
+        'O passo da volta n é n dividido por 2.',
+        'REPITA 72 [ PF REPCONT / 2  PD 15 ].',
+      ],
+      success: 'A concha de Arquimedes se desenrola diante de você.',
+      concept: { title: '💡 Crescimento linear', text: 'Quando o passo cresce sempre o mesmo tanto, a espiral se afasta do centro de forma regular: é a <b>espiral arquimediana</b>.' },
+      goal: 'Controlar crescimento com expressões (divisão) e giros pequenos.',
+      commands: ['REPITA', 'REPCONT', 'PF', 'PD'], concepts: ['Expressões', 'Espiral'],
+      teacherTip: 'Troque o 15 por 10 e por 20 e discuta o efeito.',
+    },
+    {
+      id: 28, icon: '✳️', title: 'As Estrelas Aninhadas', shape: 'Três octagramas',
+      lore: 'Três estrelas de oito pontas nascem umas dentro das outras, cada uma com o dobro da força.',
+      challenge: 'Crie ESTRELA :T (8 linhas de :T girando 135°) e desenhe estrelas de 60, 120 e 180 passos.',
+      solution: 'PARA ESTRELA :T\n  REPITA 8 [PF :T PD 135]\nFIM\nREPITA 3 [ESTRELA REPCONT * 60]',
+      technique: 'PARA', requires: ['PARA'], match: 'shape',
+      hints: [
+        'A estrela de 8 pontas gira 135° em cada ponta (3 voltas completas ÷ 8).',
+        'Crie o comando com PARA ESTRELA :T ... FIM.',
+        'Para os tamanhos 60, 120 e 180, dá para usar REPITA 3 com REPCONT * 60.',
+      ],
+      success: 'Três estrelas, uma técnica. A matriz se revela!',
+      concept: { title: '💡 Combinando ferramentas', text: 'Procedimento + REPITA + REPCONT: cada ferramenta resolve uma parte. Combinar ferramentas é o coração da programação.' },
+      goal: 'Combinar procedimento, laço e contador.',
+      commands: ['PARA', 'REPITA', 'REPCONT', 'PF', 'PD'], concepts: ['Procedimento', 'Composição'],
+      teacherTip: 'Desafie: estrelas de 7 pontas (giro = 3×360÷7).',
+    },
+    {
+      id: 29, icon: '🔺', title: 'O Triângulo de Sierpinski', shape: 'Fractal de Sierpinski',
+      lore: 'Dentro de cada triângulo há três triângulos menores — e dentro deles, outros mais. É o primeiro fractal.',
+      challenge: 'Desenhe o Triângulo de Sierpinski de tamanho 200 e nível 3, com um procedimento que chama a si mesmo.',
+      solution: 'PARA SIERP :T :N\n  SE :N = 0 [REPITA 3 [PF :T PD 120] PARE]\n  REPITA 3 [SIERP :T / 2 :N - 1 PF :T PD 120]\nFIM\nSIERP 200 3',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape',
+      hints: [
+        'No nível 0, SIERP só desenha um triângulo. Use SE :N = 0 [ ... PARE].',
+        'Nos outros níveis: em cada canto do triângulo, desenhe um SIERP com metade do tamanho e um nível a menos.',
+        'REPITA 3 [ SIERP :T / 2 :N - 1  PF :T  PD 120 ].',
+      ],
+      success: 'Você desenhou um fractal! Formas dentro de formas, para sempre.',
+      concept: { title: '🌀 Recursividade', text: 'Um procedimento que <b>chama a si mesmo</b> com um problema menor se chama <b>recursivo</b>. O SE ... [PARE] é a "condição de parada": sem ela, nunca terminaria.', compare: 'Em Python:\ndef sierp(t, n):\n    if n == 0:\n        triangulo(t)\n        return\n    for i in range(3):\n        sierp(t / 2, n - 1)\n        frente(t)\n        direita(120)' },
+      goal: 'Introduzir recursão com condição de parada.',
+      commands: ['PARA', 'SE', 'PARE', 'REPITA', 'PF', 'PD'], concepts: ['Recursão', 'Fractal'],
+      teacherTip: 'Rode com níveis 0, 1, 2 e 3 na velocidade lenta e peça para descreverem o padrão.',
+    },
+    {
+      id: 30, icon: '🐌', title: 'A Espiral Dourada', shape: 'Espiral de Fibonacci',
+      lore: 'Os números de Fibonacci (1, 1, 2, 3, 5, 8, 13...) guardam a proporção áurea das conchas e galáxias.',
+      challenge: 'Desenhe 7 quartos de círculo com raios 10, 10, 20, 30, 50, 80 e 130 (cada raio é a soma dos dois anteriores).',
+      solution: 'PARA ARCO :R\n  REPITA 18 [PF :R * 0.0873 PD 5]\nFIM\nPARA FIB :A :B :N\n  SE :N = 0 [PARE]\n  ARCO :B\n  FIB :B :A + :B :N - 1\nFIM\nFIB 0 10 7',
+      technique: 'PARA', requires: ['PARA'], match: 'shape',
+      hints: [
+        'Um quarto de círculo: 18 passos girando 5° (18 × 5 = 90°). O passo para raio R é R × 0,0873.',
+        'Crie ARCO :R e depois chame ARCO 10, ARCO 10, ARCO 20... — ou use recursão.',
+        'Recursão: FIB :A :B :N desenha ARCO :B e chama FIB :B (:A + :B) (:N - 1).',
+      ],
+      success: 'A espiral dourada se abre como uma galáxia. Você é Mestre da Matriz!',
+      concept: { title: '✨ Proporção áurea', text: 'Cada raio é a soma dos dois anteriores: a <b>sequência de Fibonacci</b>. A razão entre raios vizinhos se aproxima de 1,618 — a proporção áurea.' },
+      goal: 'Usar procedimentos com vários parâmetros (e, opcionalmente, recursão).',
+      commands: ['PARA', 'SE', 'PARE', 'REPITA', 'PF', 'PD'], concepts: ['Procedimento', 'Recursão', 'Fibonacci'],
+      teacherTip: 'Aceite a solução com 7 chamadas de ARCO; a recursiva vale como desafio extra.',
+    },
+    /* --------------------------- Reino 6 ------------------------------ */
+    {
+      id: 31, icon: '🪷', title: 'O Lótus de Trinta e Seis Pétalas', shape: 'Flor de 36 pétalas',
+      lore: 'Na Grande Perfeição, cada pétala é uma técnica, e o lótus inteiro é um só pensamento.',
+      challenge: 'Crie PETALA :R (dois arcos de 90°, cada um com 30 passos de :R girando 3°) e desenhe 36 pétalas girando 10°.',
+      solution: 'PARA PETALA :R\n  REPITA 2 [REPITA 30 [PF :R PD 3] PD 90]\nFIM\nREPITA 36 [PETALA 3 PD 10]',
+      technique: 'PARA', requires: ['PARA'], match: 'shape',
+      hints: [
+        'Uma pétala = arco, giro de 90°, arco, giro de 90°.',
+        'Cada arco: REPITA 30 [PF :R PD 3] (30 × 3° = 90°).',
+        'Depois da pétala, gire 10°: 36 pétalas × 10° = 360°.',
+      ],
+      success: 'O lótus celestial desabrocha.',
+      concept: { title: '💡 Abstração', text: 'Com PETALA pronta, você parou de pensar em passos e passou a pensar em <b>pétalas</b>. Esconder detalhes atrás de um nome é <b>abstração</b>.' },
+      goal: 'Abstração com procedimentos dentro de repetições.',
+      commands: ['PARA', 'REPITA', 'PF', 'PD'], concepts: ['Abstração', 'Procedimento'],
+      teacherTip: 'Peça para criarem flores com 12 e 18 pétalas.',
+    },
+    {
+      id: 32, icon: '❄️', title: 'O Floco de Koch', shape: 'Floco de neve de Koch',
+      lore: 'Cada linha reta se quebra em quatro, de novo e de novo: o floco de neve infinito.',
+      challenge: 'Desenhe o floco de Koch: 3 curvas de Koch de tamanho 240 e nível 3, girando 120° (comece com PD 30).',
+      solution: 'PARA KOCH :T :N\n  SE :N = 0 [PF :T PARE]\n  KOCH :T / 3 :N - 1\n  PE 60\n  KOCH :T / 3 :N - 1\n  PD 120\n  KOCH :T / 3 :N - 1\n  PE 60\n  KOCH :T / 3 :N - 1\nFIM\nPD 30\nREPITA 3 [KOCH 240 3 PD 120]',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape',
+      hints: [
+        'No nível 0, a curva de Koch é só uma linha reta: SE :N = 0 [PF :T PARE].',
+        'Nos outros níveis: 4 curvas menores (:T / 3, nível :N - 1) com giros PE 60, PD 120, PE 60 entre elas.',
+        'O floco são 3 curvas de Koch formando um triângulo: REPITA 3 [KOCH 240 3 PD 120].',
+      ],
+      success: 'O floco de Koch cintila — um perímetro que cresce para sempre!',
+      concept: { title: '❄️ Fractal clássico', text: 'A curva de Koch é um exemplo clássico da LOGO: uma regra simples aplicada repetidamente gera uma figura infinitamente detalhada.' },
+      goal: 'Recursão múltipla (4 chamadas) com parâmetros.',
+      commands: ['PARA', 'SE', 'PARE', 'REPITA', 'PF', 'PD', 'PE'], concepts: ['Recursão', 'Fractal'],
+      teacherTip: 'Rode com nível 0, 1, 2 e 3 para a turma ver a regra se aplicando.',
+    },
+    {
+      id: 33, icon: '🌳', title: 'A Árvore Fractal', shape: 'Árvore recursiva',
+      lore: 'Cada galho se divide em dois galhos menores. A árvore inteira nasce de uma única regra.',
+      challenge: 'Desenhe a árvore: tronco de 100 que se divide em dois galhos (30° para cada lado) com 70% do tamanho, até o nível 6. Comece 150 passos abaixo do centro.',
+      solution: 'PARA ARVORE :T :N\n  SE :N = 0 [PARE]\n  PF :T\n  PE 30\n  ARVORE :T * 0.7 :N - 1\n  PD 60\n  ARVORE :T * 0.7 :N - 1\n  PE 30\n  PT :T\nFIM\nLEVANTE PT 150 BAIXE\nARVORE 100 6',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape',
+      hints: [
+        'Um galho: ande :T, desenhe as duas sub-árvores e volte (PT :T) para onde começou.',
+        'Esquerda: PE 30 e ARVORE menor. Direita: PD 60 (desfaz os 30 e gira mais 30) e outra ARVORE.',
+        'Não esqueça de desvirar (PE 30) e voltar (PT :T) no fim — e do SE :N = 0 [PARE].',
+      ],
+      success: 'A árvore cresceu de uma única semente de código.',
+      concept: { title: '🌳 Voltar ao estado inicial', text: 'Toda chamada recursiva da árvore termina <b>exatamente onde começou</b>. Essa disciplina (desfazer giros e voltar) é o que mantém a recursão organizada.' },
+      goal: 'Recursão em árvore com restauração do estado.',
+      commands: ['PARA', 'SE', 'PARE', 'PF', 'PT', 'PD', 'PE', 'LEVANTE', 'BAIXE'], concepts: ['Recursão', 'Estado'],
+      teacherTip: 'Troque 30° por 20° e 0.7 por 0.6 para ver árvores diferentes.',
+    },
+    {
+      id: 34, icon: '🐉', title: 'A Curva do Dragão Celestial', shape: 'Curva do dragão',
+      lore: 'Dobre uma tira de papel ao meio, de novo e de novo... ao abrir, surge o dragão.',
+      challenge: 'Desenhe a curva do dragão de nível 10 com passos de 6: DRAGAO :N :S chama DRAGAO :N - 1 1, gira 90 × :S e chama DRAGAO :N - 1 -1.',
+      solution: 'PARA DRAGAO :N :S\n  SE :N = 0 [PF 6 PARE]\n  DRAGAO :N - 1 1\n  PD 90 * :S\n  DRAGAO :N - 1 -1\nFIM\nDRAGAO 10 1',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape', tolerance: 4,
+      hints: [
+        'No nível 0, o dragão é um passo: SE :N = 0 [PF 6 PARE].',
+        ':S vale 1 ou -1 e decide o lado do giro: PD 90 * :S gira para a direita ou para a esquerda.',
+        'Atenção: em DRAGAO :N - 1 -1, o -1 colado é um número negativo (o segundo valor).',
+      ],
+      success: 'O dragão celestial desperta das dobras do papel!',
+      concept: { title: '🐉 Parâmetro de sinal', text: 'Um parâmetro que vale 1 ou -1 muda a direção do giro. Um mesmo procedimento desenha duas versões espelhadas de si mesmo.' },
+      goal: 'Recursão com parâmetro de controle (sinal).',
+      commands: ['PARA', 'SE', 'PARE', 'PF', 'PD'], concepts: ['Recursão', 'Parâmetro'],
+      teacherTip: 'Mostre os níveis 1, 2, 3 e 4 e relacione com dobrar uma tira de papel.',
+    },
+    {
+      id: 35, icon: '🌲', title: 'A Árvore de Pitágoras', shape: 'Árvore de quadrados',
+      lore: 'Sobre cada quadrado nascem dois quadrados menores, inclinados como os lados de um triângulo.',
+      challenge: 'Desenhe a Árvore de Pitágoras com quadrado inicial de 50 e nível 7 (cada novo quadrado tem 0,7071 do lado anterior e gira 45°).',
+      solution: 'PARA PIT :T :N\n  SE :N = 0 [PARE]\n  REPITA 4 [PF :T PD 90]\n  PF :T\n  PE 45\n  PIT :T * 0.7071 :N - 1\n  PD 90\n  PF :T * 0.7071\n  PIT :T * 0.7071 :N - 1\n  PT :T * 0.7071\n  PE 45\n  PT :T\nFIM\nPIT 50 7',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape',
+      hints: [
+        'Desenhe o quadrado de lado :T e suba até o canto de cima à esquerda.',
+        'Gire PE 45 e chame PIT menor (lado × 0,7071). Depois PD 90, ande o lado menor e chame PIT de novo.',
+        'Desfaça tudo no fim: volte o lado menor, PE 45 e PT :T — a tartaruga precisa terminar onde começou.',
+      ],
+      success: 'A Árvore de Pitágoras floresce em mil quadrados. O gargalo final está próximo!',
+      concept: { title: '📐 Geometria + recursão', text: '0,7071 é √2 ÷ 2: o lado de cada quadrado novo, tirado do <b>teorema de Pitágoras</b>. Matemática e programação juntas!' },
+      goal: 'Recursão dupla com geometria (Pitágoras).',
+      commands: ['PARA', 'SE', 'PARE', 'REPITA', 'PF', 'PT', 'PD', 'PE'], concepts: ['Recursão', 'Geometria'],
+      teacherTip: 'Ligue com o teorema de Pitágoras: os dois quadrados menores somam a área do maior.',
+    },
+    {
+      id: 36, icon: '☯️', title: 'A Mandala Celestial do Dao', shape: 'Doze curvas de Koch',
+      lore: 'Wu Wei: sem esforço desnecessário. Doze curvas de Koch, uma única ideia, a Grande Perfeição.',
+      challenge: 'Desenhe 12 curvas de Koch de tamanho 54 e nível 3, girando 30° (PD) depois de cada uma.',
+      solution: 'PARA KOCH :T :N\n  SE :N = 0 [PF :T PARE]\n  KOCH :T / 3 :N - 1\n  PE 60\n  KOCH :T / 3 :N - 1\n  PD 120\n  KOCH :T / 3 :N - 1\n  PE 60\n  KOCH :T / 3 :N - 1\nFIM\nREPITA 12 [KOCH 54 3 PD 30]',
+      technique: 'RECURSAO', requires: ['PARA'], match: 'shape', final: true,
+      hints: [
+        'Você já criou KOCH no Floco de Koch — reaproveite!',
+        '12 curvas × 30° = 360°: a figura fecha.',
+        'REPITA 12 [KOCH 54 3 PD 30].',
+      ],
+      success: '☯️ Você alcançou a Grande Perfeição: é um Iluminado do Dao dos Algoritmos!',
+      concept: { title: '☯️ Iluminado do Dao', text: 'Você percorreu <b>sequência</b>, <b>ângulos</b>, <b>repetição</b>, <b>laços aninhados</b>, <b>otimização</b>, <b>procedimentos</b>, <b>parâmetros</b>, <b>condicionais</b> e <b>recursão</b>: os fundamentos de toda linguagem de programação.' },
+      goal: 'Reutilizar um procedimento recursivo numa composição final.',
+      commands: ['PARA', 'SE', 'PARE', 'REPITA', 'PF', 'PD', 'PE'], concepts: ['Reuso', 'Recursão', 'Integração'],
+      teacherTip: 'Proponha que cada aluno crie a própria mandala celestial e explique o código.',
     },
   ];
+
+  /* Aplica o tema de cultivo aos 15 originais e junta os novos (ordem por id). */
+  LEVELS.forEach((l) => {
+    const c = CULTIVO_ORIGINAIS[l.id];
+    if (c) Object.assign(l, c);
+  });
+  NOVOS.forEach((l) => LEVELS.push(l));
+  LEVELS.sort((a, b) => a.id - b.id);
+
+  /** Nível pelo id (os ids não mudam; a ordem da jornada fica em js/cultivo.js). */
+  function byId(id) {
+    return LEVELS.find((l) => l.id === +id) || null;
+  }
+
+  /** Técnica que vale a 2ª estrela (REPITA, PARA, REPCONT, RECURSAO ou nenhuma). */
+  function techniqueOf(level) {
+    if (level.technique !== undefined) return level.technique;
+    return level.repeatUseful ? 'REPITA' : null;
+  }
+
+  const TECHNIQUE_LABEL = { REPITA: 'usando REPITA', PARA: 'criando um procedimento (PARA)', REPCONT: 'usando REPCONT', RECURSAO: 'usando recursão' };
+
+  function usesTechnique(analysis, tech) {
+    switch (tech) {
+      case null: case undefined: return true;
+      case 'REPITA': return analysis.usesRepeat;
+      case 'PARA': return !!analysis.usesProcedures;
+      case 'REPCONT': return !!analysis.usesRepcount;
+      case 'RECURSAO': return !!analysis.recursive;
+      default: return true;
+    }
+  }
+
+  /** Meta de comandos para ⭐⭐⭐ (se não informada, vale o tamanho da solução). */
+  function parOf(level) {
+    if (level.par) return level.par;
+    targetOf(level);
+    return level._solutionAnalysis.size;
+  }
+
+
+  /* O Laboratório de Fractais virou realidade nos Reinos 5 e 6. */
+  const FUTURE_LEVELS = [];
 
   /* ------------------------- Desenho-alvo ------------------------------ */
   function targetOf(level) {
@@ -386,6 +829,8 @@
     }
 
     for (const req of level.requires || []) {
+      if (req === 'PARA' && analysis.usesProcedures) continue;
+      if (req === 'REPCONT' && analysis.usesRepcount) continue;
       const options = Array.isArray(req) ? req : [req];
       if (!options.some((r) => analysis.commandsUsed.includes(r))) {
         return {
@@ -396,6 +841,14 @@
       }
     }
 
+    if (level.limit && analysis.size > level.limit) {
+      return {
+        completed: false, stars: 0, compare: cmp,
+        title: 'O desenho está perfeito!',
+        text: `Mas a técnica ainda gasta Qi demais: ${analysis.size} comandos. O limite deste desafio é ${level.limit}. Procure o padrão que se repete e refine o código.`,
+      };
+    }
+
     if (level.finalAtStart && Math.hypot(state.x, state.y) > 2) {
       return {
         completed: false, stars: 0, compare: cmp,
@@ -404,14 +857,15 @@
       };
     }
 
+    const par = parOf(level);
     let stars = 1;
-    if (!level.repeatUseful || analysis.usesRepeat) stars = 2;
-    if (stars === 2 && analysis.size <= level.par) stars = 3;
+    if (usesTechnique(analysis, techniqueOf(level))) stars = 2;
+    if (stars === 2 && analysis.size <= par) stars = 3;
 
     let efficiency;
-    if (analysis.size <= level.par) efficiency = { label: 'Ótima', icon: '🌟', text: `${analysis.size} comando(s) — dentro da meta de ${level.par}.` };
-    else if (analysis.size <= level.par * 2) efficiency = { label: 'Boa', icon: '👍', text: `${analysis.size} comandos. Meta para 3 estrelas: até ${level.par}.` };
-    else efficiency = { label: 'Pode melhorar', icon: '🔧', text: `${analysis.size} comandos. Dá para escrever com menos — meta: ${level.par}.` };
+    if (analysis.size <= par) efficiency = { label: 'Ótima', icon: '🌟', text: `${analysis.size} comando(s) — dentro da meta de ${par}.` };
+    else if (analysis.size <= par * 2) efficiency = { label: 'Boa', icon: '👍', text: `${analysis.size} comandos. Meta para 3 estrelas: até ${par}.` };
+    else efficiency = { label: 'Pode melhorar', icon: '🔧', text: `${analysis.size} comandos. Dá para escrever com menos — meta: ${par}.` };
 
     return { completed: true, stars, title: 'Muito bem!', text: level.success, compare: cmp, efficiency };
   }
@@ -419,11 +873,15 @@
   /** Dica sobre como ganhar mais estrelas (mostrada após concluir). */
   function nextStarTip(level, result, analysis) {
     if (result.stars >= 3) return null;
-    if (result.stars === 1 && level.repeatUseful) return 'Para ganhar a 2ª estrela, tente resolver usando REPITA.';
-    return `Para ganhar a 3ª estrela, tente usar no máximo ${level.par} comando(s). Você usou ${analysis.size}.`;
+    const tech = techniqueOf(level);
+    if (result.stars === 1 && tech) return `Para ganhar a 2ª estrela, tente resolver ${TECHNIQUE_LABEL[tech]}.`;
+    return `Para ganhar a 3ª estrela, tente usar no máximo ${parOf(level)} comando(s). Você usou ${analysis.size}.`;
   }
 
-  const api = { LEVELS, FUTURE_LEVELS, targetOf, evaluate, nextStarTip, requirementLabel, similarity };
+  const api = {
+    LEVELS, FUTURE_LEVELS, targetOf, evaluate, nextStarTip, requirementLabel, similarity,
+    byId, techniqueOf, usesTechnique, parOf, TECHNIQUE_LABEL,
+  };
   root.Levels = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
