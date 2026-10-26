@@ -147,9 +147,13 @@
     result.precision = best.precision;
     result.coverage = best.coverage;
     result.variant = best.variant;
-    // o comprimento total também precisa bater (PF 90 não vale por PF 100)
-    result.ok = best.precision >= o.threshold && best.coverage >= o.threshold &&
-      Math.abs(result.lengthRatio - 1) <= o.lengthTolerance;
+    // o comprimento total também precisa bater (PF 90 não vale por PF 100).
+    // allowOverdraw: passar de novo por cima do tracejado não reprova (Reino 3+);
+    // quem chama desconta estrelas olhando lengthRatio.
+    const tooShort = result.lengthRatio < 1 - o.lengthTolerance;
+    const tooLong = !o.allowOverdraw && result.lengthRatio > 1 + o.lengthTolerance;
+    result.ok = best.precision >= o.threshold && best.coverage >= o.threshold && !tooShort && !tooLong;
+    result.overdraw = result.lengthRatio > 1 + o.lengthTolerance;
     return result;
   }
 

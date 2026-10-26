@@ -13,6 +13,9 @@
  *     ou de um estágio mais adiante (progresso da versão antiga, de 15
  *     níveis), o estágio também fica aberto.
  * Pico (Gargalo): vencer os 2 desafios do Pico rompe o reino (Breakthrough).
+ * Estrelas mínimas (a partir do Reino 3, escala de 5 estrelas): para romper,
+ * TODOS os 6 desafios do reino precisam de pelo menos estrelasMinimas
+ * (3 nos Reinos 3 a 5; 4 no Reino 6). O próximo reino só abre com o rompimento.
  *
  * Para mudar a jornada: altere REINOS (ids dos desafios em cada estágio).
  * ========================================================================= */
@@ -27,7 +30,7 @@
 
   const REINOS = [
     {
-      id: 1, nome: 'O Primeiro Traço', subtitulo: 'Despertar da Tartaruga', icone: '🐢', corAura: '#4ade80',
+      id: 1, estrelasMinimas: 0, nome: 'O Primeiro Traço', subtitulo: 'Despertar da Tartaruga', icone: '🐢', corAura: '#4ade80',
       descricao: 'O despertar da tartaruga espiritual: movimento em linha reta, giros exatos e precisão no plano mundano.',
       foco: 'PF, PT, PD, PE, LEVANTE e BAIXE: sequência e precisão.',
       titulo: 'Discípulo do Traço',
@@ -39,7 +42,7 @@
       ],
     },
     {
-      id: 2, nome: 'O Laço Harmônico', subtitulo: 'Ciclo Elemental', icone: '🔁', corAura: '#38bdf8',
+      id: 2, estrelasMinimas: 0, nome: 'O Laço Harmônico', subtitulo: 'Ciclo Elemental', icone: '🔁', corAura: '#38bdf8',
       descricao: 'A energia opera em ciclos rítmicos e fechados. Repetir é ganhar força sem gastar palavras.',
       foco: 'REPITA, polígonos regulares e a volta completa de 360°.',
       titulo: 'Cultivador do Ciclo',
@@ -51,7 +54,7 @@
       ],
     },
     {
-      id: 3, nome: 'Geometria Espiritual', subtitulo: 'Manifestação dos Padrões', icone: '🪷', corAura: '#c084fc',
+      id: 3, estrelasMinimas: 3, nome: 'Geometria Espiritual', subtitulo: 'Manifestação dos Padrões', icone: '🪷', corAura: '#c084fc',
       descricao: 'A fusão de vários ciclos manifesta mandalas, flores de lótus e matrizes místicas.',
       foco: 'Laços aninhados, decomposição, rosetas e simetria rotacional.',
       titulo: 'Artífice das Mandalas',
@@ -63,7 +66,7 @@
       ],
     },
     {
-      id: 4, nome: 'Refinamento Puro', subtitulo: 'Cura do Desvio de Qi', icone: '⚗️', corAura: '#fbbf24',
+      id: 4, estrelasMinimas: 3, nome: 'Refinamento Puro', subtitulo: 'Cura do Desvio de Qi', icone: '⚗️', corAura: '#fbbf24',
       descricao: 'Eliminar o desperdício de energia: onde o mundano usa trinta blocos, o refinado usa cinco.',
       foco: 'Otimização: limite máximo de comandos, padrões mínimos e camadas de repetição.',
       titulo: 'Refinador do Qi',
@@ -75,7 +78,7 @@
       ],
     },
     {
-      id: 5, nome: 'Mestre da Matriz', subtitulo: 'Visão Abstrata', icone: '🌀', corAura: '#f472b6',
+      id: 5, estrelasMinimas: 3, nome: 'Mestre da Matriz', subtitulo: 'Visão Abstrata', icone: '🌀', corAura: '#f472b6',
       descricao: 'O cultivador enxerga além do canvas: espirais cósmicas, proporções áureas e padrões que contêm a si mesmos.',
       foco: 'REPCONT, procedimentos (PARA … FIM), parâmetros, SE e a primeira recursão.',
       titulo: 'Mestre da Matriz',
@@ -87,7 +90,7 @@
       ],
     },
     {
-      id: 6, nome: 'O Iluminado do Dao', subtitulo: 'A Tartaruga Celestial', icone: '☯️', corAura: '#fde047',
+      id: 6, estrelasMinimas: 4, nome: 'O Iluminado do Dao', subtitulo: 'A Tartaruga Celestial', icone: '☯️', corAura: '#fde047',
       descricao: 'O estado supremo de não-ação (Wu Wei): códigos elegantes que formam geometrias sagradas impecáveis.',
       foco: 'Recursão avançada: Koch, árvores fractais, curva do dragão e mandalas celestiais.',
       titulo: 'Iluminado do Dao',
@@ -120,6 +123,47 @@
 
   const levelsApi = () => root.Levels;
   const done = (data, id) => !!(data.levels[id] && data.levels[id].completed);
+  const estrelas = (data, id) => (data.levels[id] && data.levels[id].stars) || 0;
+
+  /** Escala de estrelas do desafio: 5 a partir do Reino 3, 3 nos Reinos 1 e 2. */
+  function maxEstrelas(id) {
+    const w = WHERE[id];
+    return w && w.reino.id >= 3 ? 5 : 3;
+  }
+
+  /** Mínimo de estrelas que o desafio precisa ter para o reino poder ser rompido. */
+  function minEstrelas(id) {
+    const w = WHERE[id];
+    return w ? w.reino.estrelasMinimas : 0;
+  }
+
+  /** Concluído e com as estrelas mínimas do reino. */
+  function cumprido(data, id) {
+    return done(data, id) && estrelas(data, id) >= minEstrelas(id);
+  }
+
+  /** Desafios concluídos do reino que ainda estão abaixo do mínimo de estrelas. */
+  function faltamEstrelas(data, reinoId) {
+    const r = REINOS[reinoId - 1];
+    return r.subEstagios.flatMap((st) => st.desafiosIds)
+      .filter((id) => done(data, id) && estrelas(data, id) < r.estrelasMinimas);
+  }
+
+  /**
+   * Converte estrelas antigas (escala de 3) dos desafios do Reino 3 em diante
+   * para a escala de 5: 3→5, 2→4, 1→3. Marca escala: 5 para não converter de novo.
+   */
+  function migrarEstrelas(data) {
+    let mudou = false;
+    Object.keys(data.levels || {}).forEach((id) => {
+      const r = data.levels[id];
+      if (!r || !r.completed || r.escala === 5 || maxEstrelas(+id) !== 5) return;
+      r.stars = { 1: 3, 2: 4, 3: 5 }[r.stars] || Math.min(5, r.stars || 1);
+      r.escala = 5;
+      mudou = true;
+    });
+    return mudou;
+  }
 
   /** Desafios na ordem da jornada (objetos de js/levels.js). */
   function orderedLevels() {
@@ -142,7 +186,9 @@
   /** O estágio k está aberto para jogar? */
   function stageUnlocked(data, k) {
     if (data.unlockAll || k === 0) return true;
-    if (stageDone(data, k - 1)) return true;
+    // 1º estágio de um reino: exige o rompimento do reino anterior (com as estrelas mínimas)
+    const inicioDeReino = STAGES[k].estagio.tipo === 'INICIAL';
+    if (inicioDeReino ? reinoRompido(data, STAGES[k - 1].reino.id) : stageDone(data, k - 1)) return true;
     // retrocompatibilidade: já concluiu algo deste estágio ou de um posterior
     for (let j = k; j < STAGES.length; j++) {
       if (STAGES[j].estagio.desafiosIds.some((id) => done(data, id))) return true;
@@ -155,17 +201,20 @@
     return !!w && stageUnlocked(data, w.stageIndex);
   }
 
-  /** Reino rompido = os dois desafios do Pico concluídos. */
+  /** Reino rompido = Pico vencido e todos os desafios do reino com as estrelas mínimas. */
   function reinoRompido(data, reinoId) {
     const r = REINOS[reinoId - 1];
-    return r.subEstagios[2].desafiosIds.every((id) => done(data, id));
+    if (!r.subEstagios[2].desafiosIds.every((id) => done(data, id))) return false;
+    if (!r.estrelasMinimas) return true; // Reinos 1 e 2: basta vencer o Pico
+    return r.subEstagios.flatMap((st) => st.desafiosIds).every((id) => cumprido(data, id));
   }
 
   /**
    * Situação atual do cultivador:
    *   reino     o reino mais avançado já aberto
    *   estagio   o estágio mais avançado aberto dentro dele
-   *   qi        % de desafios concluídos nesse reino (energia até o rompimento)
+   *   qi        % de desafios do reino concluídos COM as estrelas mínimas
+   *             (energia até o rompimento)
    *   titulo    título marcial (o do último reino rompido)
    */
   function situacao(data) {
@@ -174,7 +223,7 @@
     const reino = STAGES[k].reino;
     const estagio = STAGES[k].estagio;
     const ids = reino.subEstagios.flatMap((s) => s.desafiosIds);
-    const feitos = ids.filter((id) => done(data, id)).length;
+    const feitos = ids.filter((id) => cumprido(data, id)).length;
     const rompidos = REINOS.filter((r) => reinoRompido(data, r.id));
     const ultimo = rompidos[rompidos.length - 1];
     const completo = rompidos.length === REINOS.length;
@@ -183,14 +232,19 @@
       rompido: reinoRompido(data, reino.id), completo,
       titulo: ultimo ? ultimo.titulo : 'Discípulo Mundano',
       rompidos: rompidos.map((r) => r.id),
+      faltam: faltamEstrelas(data, reino.id),
     };
   }
 
-  /** Próximo desafio aberto e ainda não concluído (na ordem da jornada). */
+  /**
+   * Próximo desafio a cultivar (na ordem da jornada): o primeiro aberto e
+   * não concluído; se não houver, o primeiro aberto abaixo das estrelas mínimas.
+   */
   function proximo(data, depoisDeId) {
     const start = depoisDeId ? ORDER.indexOf(+depoisDeId) + 1 : 0;
     const seq = ORDER.slice(start).concat(ORDER.slice(0, start));
-    const id = seq.find((x) => levelUnlocked(data, x) && !done(data, x));
+    const id = seq.find((x) => levelUnlocked(data, x) && !done(data, x)) ||
+      seq.find((x) => levelUnlocked(data, x) && !cumprido(data, x));
     return id ? levelsApi().byId(id) : null;
   }
 
@@ -218,6 +272,7 @@
   const api = {
     REINOS, ESTAGIOS, STAGES, ORDER, orderedLevels, numero, onde,
     stageUnlocked, stageDone, levelUnlocked, reinoRompido, situacao, proximo, registrarRompimentos,
+    maxEstrelas, minEstrelas, cumprido, faltamEstrelas, migrarEstrelas,
   };
   root.Cultivo = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

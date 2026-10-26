@@ -45,7 +45,10 @@ A jornada é organizada como um cultivo de artes marciais (Murim/Wuxia): **6 rei
 - **Rompimento de Reino:** vencer os dois desafios do Pico abre o próximo reino e mostra uma janela celebratória (aura, citação do Dao e **novo título marcial**: Discípulo do Traço, Cultivador do Ciclo, Artífice das Mandalas, Refinador do Qi, Mestre da Matriz, Iluminado do Dao).
 - **Topo da tela:** insígnia e título do reino atual (ex.: *Reino 2: O Laço Harmônico — Pico do Reino · Discípulo do Traço*) e a **barra de Qi** (porcentagem do reino concluída).
 - **Retrocompatível:** os 15 níveis originais mantêm seus ids (estão nos Reinos 1–4); quem já tinha progresso não perde nada — os estágios que ele já alcançou continuam abertos e os reinos já vencidos são marcados como rompidos (sem repetir a celebração).
-- **Estrelas:** ⭐ desenho correto · ⭐⭐ usando a técnica do desafio (REPITA, PARA, REPCONT ou recursão) · ⭐⭐⭐ no máximo `par` comandos. No Reino 4 existe também um **limite** obrigatório de comandos.
+- **Estrelas nos Reinos 1 e 2 (3 ★):** ⭐ desenho correto · ⭐⭐ usando a técnica do desafio · ⭐⭐⭐ no máximo `par` comandos. Ali, técnica obrigatória e desenho repetido ainda reprovam.
+- **Estrelas do Reino 3 em diante (5 ★, modo flexível):** se a tartaruga passar por cima do tracejado e fizer o desenho pedido, o desafio **passa**. As regras só descontam: −1 ★ por não usar a técnica pedida (REPITA, PARA, REPCONT, recursão), −1 ★ por passar da meta de comandos (−2 se passar do dobro), −1 ★ por passar do limite (Reino 4), −1 ★ por repetir linhas por cima do tracejado e −1 ★ por usar todas as dicas (mínimo 1 ★). A janela de sucesso lista cada desconto.
+- **Estrelas mínimas para romper:** Reinos 3 a 5 exigem pelo menos **3 de 5 ★ em cada desafio** do reino; o Reino 6 exige **4 de 5 ★**. Os Reinos 1 e 2 rompem ao vencer o Pico. O mapa aponta os desafios abaixo do mínimo.
+- **Digitar, não clicar:** a partir do Reino 3, os blocos de "Comandos da Linguagem" são só consulta — clicar neles não insere código; o aluno digita no teclado.
 
 Onde fica cada coisa: reinos e estágios em `js/cultivo.js` (`REINOS`); os desafios em `js/levels.js`; o progresso do cultivo (`cultivo.rompimentos`, reino e estágio atuais) no `localStorage` junto com o resto.
 
@@ -66,7 +69,7 @@ Regra do sinal (igual à LOGO original): `:N - 1` e `:N-1` são conta; `:N -1` (
 Mesmo sistema do AlgoBot, **sem banco de dados**:
 
 - Na primeira visita o aluno digita o **nome ou apelido**. O progresso é salvo automaticamente no navegador daquele computador.
-- O botão **🔑 Meu código** (no avatar, no mapa e nas Conquistas) mostra um código curto, por exemplo `TAR2-ZG0000000000000000-MSPS`. Ele **carrega todo o progresso**: as estrelas dos 36 desafios e as aulas concluídas, assinadas pelo nome. Códigos antigos `TAR-…` (da versão de 15 níveis) continuam sendo aceitos.
+- O botão **🔑 Meu código** (no avatar, no mapa e nas Conquistas) mostra um código curto, por exemplo `TAR2-ZG0000000000000000-MSPS`. Ele **carrega todo o progresso**: as estrelas dos 36 desafios e as aulas concluídas, assinadas pelo nome. O código atual é `TAR3-…` (até 5 estrelas por desafio); os antigos `TAR2-…` e `TAR-…` continuam sendo aceitos, com as estrelas do Reino 3 em diante convertidas para a escala de 5 (3→5, 2→4, 1→3).
 - **💾 Salvar e continuar depois** manda o código para o **próprio e-mail** do aluno (abre o Gmail na web; "Usar outro programa de e-mail" usa `mailto:`).
 - Em outro computador: **"Já jogou em outro computador?"** na tela de boas-vindas, ou **📥 Importar código** na janela do código. O aluno digita o mesmo nome (acentos e maiúsculas não importam) e cola o código.
 - Importar **nunca piora** nada: cada nível fica com o melhor resultado. O código não funciona com o nome de outro aluno, então não serve para pular níveis com o código do colega.

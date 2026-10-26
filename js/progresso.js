@@ -2,11 +2,12 @@
  * progresso.js — Código de progresso (o "save" que viaja entre computadores)
  * -------------------------------------------------------------------------
  * Mesmo sistema do AlgoBot: sem banco de dados, o progresso cabe num código
- * curto, por exemplo  TAR2-ZZZZZG0000000000-7QXM
+ * curto, por exemplo  TAR3-ZZZZZZZZZ00000000000000-7QXM
  *
- *   TAR2     prefixo do jogo (versão 2: 36 desafios; códigos antigos "TAR" de
- *            15 níveis continuam sendo lidos)
- *   bloco 1  estrelas de cada desafio (2 bits por desafio, na ordem dos ids)
+ *   TAR3     prefixo do jogo (versão 3: 36 desafios, até 5 estrelas). Os códigos
+ *            antigos "TAR2" (36 desafios, até 3 estrelas) e "TAR" (15 níveis)
+ *            continuam sendo lidos.
+ *   bloco 1  estrelas de cada desafio (3 bits por desafio, na ordem dos ids)
  *            + aulas do tutorial concluídas (1 bit por aula)
  *   bloco 2  assinatura: resumo (hash) do nome do aluno
  *
@@ -22,8 +23,14 @@
 (function (root) {
   'use strict';
 
-  const PREFIXO = 'TAR2';      // versão atual (36 desafios)
-  const PREFIXO_V1 = 'TAR';     // versão antiga (15 níveis, 7 aulas) — ainda é lida
+  const PREFIXO = 'TAR3';      // versão atual: 36 desafios, 3 bits por desafio (0 a 5 estrelas)
+  const PREFIXO_V2 = 'TAR2';   // versão anterior: 2 bits por desafio (0 a 3) — ainda é lida
+  const PREFIXO_V1 = 'TAR';    // versão antiga (15 níveis, 7 aulas) — ainda é lida
+
+  /** Escala de 5 estrelas (Reino 3 em diante)? Usa js/cultivo.js quando carregado. */
+  const cincoEstrelas = (id) => !!(root.Cultivo && root.Cultivo.maxEstrelas && root.Cultivo.maxEstrelas(id) === 5);
+  /** Estrelas antigas (escala de 3) → escala de 5, para os desafios do Reino 3 em diante. */
+  const converter = (id, e) => (e && cincoEstrelas(id) ? ({ 1: 3, 2: 4, 3: 5 }[e] || e) : e);
   const NOME_JOGO = 'Jornada da Tartaruga';
 
   /* Base32 sem I, L, O e U: o aluno não confunde 1/I e 0/O ao copiar à mão. */
@@ -69,15 +76,19 @@
    * levels = Levels.LEVELS, lessons = TUTORIAL. A ordem é sempre por id, então
    * reorganizar a jornada (reinos) não muda o significado do código.
    */
-  function gerarCodigo(data, levels, lessons) {
+  function gerarCodigo(data, levels, lessons, versao) {
+    // versao 1/2 (formatos antigos, 2 bits e estrelas até 3) só existe para os testes
+    const antigo = versao === 1 || versao === 2;
+    const largura = antigo ? 2 : 3;
     let bits = '';
     porId(levels).forEach((l) => {
       const r = data.levels[l.id];
-      const e = r && r.completed ? Math.max(1, Math.min(3, r.stars || 1)) : 0;
-      bits += e.toString(2).padStart(2, '0');
+      const e = r && r.completed ? Math.max(1, Math.min(antigo ? 3 : 5, r.stars || 1)) : 0;
+      bits += e.toString(2).padStart(largura, '0');
     });
     porId(lessons).forEach((a) => { bits += data.lessons[a.id] ? '1' : '0'; });
-    return `${PREFIXO}-${bitsParaBase32(bits)}-${assinatura(data.nome)}`;
+    const prefixo = versao === 1 ? PREFIXO_V1 : versao === 2 ? PREFIXO_V2 : PREFIXO;
+    return `${prefixo}-${bitsParaBase32(bits)}-${assinatura(data.nome)}`;
   }
 
   /** Limpa o que o aluno colou: espaços, minúsculas, letras confundíveis. */
@@ -88,29 +99,36 @@
 
   /**
    * Lê um código (TAR2 atual ou TAR antigo). Devolve
-   *   { valido, versao, estrelas: {id: 0..3}, aulas: {id: bool}, assinatura }
+   *   { valido, versao, estrelas: {id: 0..5}, aulas: {id: bool}, assinatura }
+   * Nos códigos antigos (TAR, TAR2) as estrelas dos desafios do Reino 3 em
+   * diante vêm na escala de 3 e são convertidas para a de 5 (3→5, 2→4, 1→3).
    * ou { valido: false, motivo }.
    */
   function decodificar(codigo, levels, lessons) {
     const partes = normalizar(codigo).split('-');
-    if (partes.length !== 3 || (partes[0] !== PREFIXO && partes[0] !== PREFIXO_V1)) {
-      return { valido: false, motivo: `O código deve ter o formato ${PREFIXO}-XXXXXXXXXXXXXXXXX-XXXX.` };
+    if (partes.length !== 3 || ![PREFIXO, PREFIXO_V2, PREFIXO_V1].includes(partes[0])) {
+      return { valido: false, motivo: `O código deve ter o formato ${PREFIXO}-XXXXXXXXXXXXXXXXXXXXXXXX-XXXX.` };
     }
     const bits = base32ParaBits(partes[1]);
     if (bits === null || base32ParaBits(partes[2]) === null || partes[2].length !== 4) {
       return { valido: false, motivo: 'O código tem letras que não existem no formato. Confira se copiou certinho.' };
     }
     const v1 = partes[0] === PREFIXO_V1;
+    const versao = v1 ? 1 : partes[0] === PREFIXO_V2 ? 2 : 3;
+    const largura = versao === 3 ? 3 : 2; // bits por desafio
     // TAR antigo: 15 níveis (ids 1-15) e 7 aulas (ids 1-7), na ordem dos ids
     const levelIds = v1 ? Array.from({ length: 15 }, (_, i) => i + 1) : porId(levels).map((l) => l.id);
     const lessonIds = v1 ? Array.from({ length: 7 }, (_, i) => i + 1) : porId(lessons).map((a) => a.id);
-    if (bits.length < levelIds.length * 2 + lessonIds.length) {
+    if (bits.length < levelIds.length * largura + lessonIds.length) {
       return { valido: false, motivo: 'O código está incompleto. Confira se copiou ele inteiro.' };
     }
     const estrelas = {}, aulas = {};
-    levelIds.forEach((id, i) => { estrelas[id] = parseInt(bits.slice(i * 2, i * 2 + 2), 2); });
-    lessonIds.forEach((id, i) => { aulas[id] = bits[levelIds.length * 2 + i] === '1'; });
-    return { valido: true, versao: v1 ? 1 : 2, estrelas, aulas, assinatura: partes[2] };
+    levelIds.forEach((id, i) => {
+      const e = Math.min(5, parseInt(bits.slice(i * largura, i * largura + largura), 2));
+      estrelas[id] = versao === 3 ? e : converter(id, e);
+    });
+    lessonIds.forEach((id, i) => { aulas[id] = bits[levelIds.length * largura + i] === '1'; });
+    return { valido: true, versao, estrelas, aulas, assinatura: partes[2] };
   }
 
   function conferirNome(codigo, nome, levels, lessons) {
@@ -139,7 +157,9 @@
       if (!atual || !atual.completed || (atual.stars || 0) < e) {
         // o número de comandos não viaja no código: usamos o maior que ainda vale essas estrelas
         const par = root.Levels && root.Levels.parOf ? root.Levels.parOf(l) : l.par;
-        data.levels[l.id] = { completed: true, stars: e, size: e >= 3 ? par : (atual && atual.size) || par + 1 };
+        const max = cincoEstrelas(l.id) ? 5 : 3;
+        data.levels[l.id] = { completed: true, stars: e, size: e >= max ? par : (atual && atual.size) || par + 1 };
+        if (max === 5) data.levels[l.id].escala = 5;
         niveis++;
       }
     });

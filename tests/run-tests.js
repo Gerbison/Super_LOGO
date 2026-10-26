@@ -225,7 +225,7 @@ function dados(nome, levels, lessons) {
 test('código de progresso: ida e volta em outro computador', () => {
   const origem = dados('Luíza', { 1: { completed: true, stars: 3 }, 2: { completed: true, stars: 1 }, 15: { completed: true, stars: 2 } }, { 1: true, 7: true });
   const codigo = Progresso.gerarCodigo(origem, L, TUTORIAL);
-  assert.match(codigo, /^TAR2-[0-9A-Z]{17}-[0-9A-Z]{4}$/);
+  assert.match(codigo, /^TAR3-[0-9A-Z]{24}-[0-9A-Z]{4}$/);
   const novo = dados('');
   const r = Progresso.importar(novo, codigo, 'Luiza', L, TUTORIAL); // sem acento também vale
   assert.ok(r.ok, r.motivo);
@@ -432,7 +432,7 @@ const altNovos = {
   20: { ok: ['REPITA 24 [REPITA 3 [PF 100 PE 120] PE 15]'], bad: ['REPITA 12 [REPITA 3 [PF 100 PD 120] PD 30]'] },
   21: { ok: ['REPITA 8 [PF 25 PD 90 PF 25 PE 90]'], bad: ['REPITA 8 [PF 25 PD 90 PF 20 PE 90]'] },
   25: { ok: ['REPITA 40 [PF 5 * REPCONT PD 90]'], bad: ['REPITA 40 [PF REPCONT * 4 PD 90]'] },
-  26: { ok: ['PARA Q :L\n REPITA 4 [PF :L PD 90]\nFIM\nREPITA 4 [Q REPCONT * 40]'], bad: ['REPITA 4 [PF 40 PD 90] REPITA 4 [PF 80 PD 90] REPITA 4 [PF 120 PD 90] REPITA 4 [PF 160 PD 90]'] },
+  26: { ok: ['PARA Q :L\n REPITA 4 [PF :L PD 90]\nFIM\nREPITA 4 [Q REPCONT * 40]'], bad: [] },
   28: { ok: ['PARA E :T\n REPITA 8 [PF :T PD 135]\nFIM\nE 60 E 120 E 180'], bad: ['PARA E :T\n REPITA 8 [PF :T PD 135]\nFIM\nE 60 E 120'] },
   32: { ok: [PK + 'PD 30\nREPITA 3 [K 240 3 PD 120]'], bad: [PK + 'PD 30\nREPITA 3 [K 240 2 PD 120]'] },
   33: { ok: [], bad: ['PARA A :T :N\n SE :N = 0 [PARE]\n PF :T PE 25 A :T*0.7 :N-1 PD 50 A :T*0.7 :N-1 PE 25 PT :T\nFIM\nLEVANTE PT 150 BAIXE\nA 100 6'] },
@@ -449,24 +449,88 @@ Object.entries(altNovos).forEach(([id, { ok, bad }]) => {
     assert.ok(!play(level, code).completed);
   }));
 });
-test('Reino 4: desenho certo acima do limite de comandos não conta', () => {
+/* ------------- Reino 3+: 5 estrelas, regras descontam (não bloqueiam) ------------- */
+test('escala: 3 estrelas nos Reinos 1-2, 5 a partir do Reino 3', () => {
+  [1, 4, 17, 5, 9, 18].forEach((id) => assert.strictEqual(Levels.maxStarsOf(Levels.byId(id)), 3, 'id ' + id));
+  [10, 19, 21, 15, 25, 36].forEach((id) => assert.strictEqual(Levels.maxStarsOf(Levels.byId(id)), 5, 'id ' + id));
+  assert.strictEqual(play(Levels.byId(36), Levels.byId(36).solution).stars, 5);
+});
+test('Reino 4: acima do limite de comandos passa, mas perde estrelas', () => {
   const longa = Array.from({ length: 8 }, () => 'PF 25 PD 90 PF 25 PE 90').join('\n');
   const res = play(Levels.byId(21), longa);
-  assert.ok(!res.completed && /limite/.test(res.text), res.text);
+  assert.ok(res.completed, res.text);
+  const keys = res.deductions.map((d) => d.key);
+  ['tecnica', 'meta', 'meta2', 'limite'].forEach((k) => assert.ok(keys.includes(k), k));
+  assert.strictEqual(res.stars, 1);
 });
-test('desafio 25 exige REPCONT; 26 exige PARA', () => {
+test('desafio 25 sem REPCONT e 26 sem PARA passam com desconto', () => {
   const longa = Array.from({ length: 40 }, (_, i) => `PF ${(i + 1) * 5} PD 90`).join('\n');
-  assert.ok(/REPCONT/.test(play(Levels.byId(25), longa).text));
-  assert.ok(/PARA/.test(play(Levels.byId(26), altNovos[26].bad[0]).text));
+  const r25 = play(Levels.byId(25), longa);
+  assert.ok(r25.completed && r25.deductions.some((d) => /REPCONT/.test(d.text)));
+  const r26 = play(Levels.byId(26), 'REPITA 4 [PF 40 PD 90] REPITA 4 [PF 80 PD 90] REPITA 4 [PF 120 PD 90] REPITA 4 [PF 160 PD 90]');
+  assert.ok(r26.completed && r26.deductions.some((d) => /PARA/.test(d.text)));
+  assert.ok(r26.stars < 5);
 });
-test('técnica da 2ª estrela: sem REPCONT o desafio 27 passa, mas com 1 estrela', () => {
+test('desafio 27 sem REPCONT e com 144 comandos: 2 de 5 estrelas', () => {
   const longa = Array.from({ length: 72 }, (_, i) => `PF ${(i + 1) / 2} PD 15`).join('\n');
   const res = play(Levels.byId(27), longa);
   assert.ok(res.completed, res.text);
-  assert.strictEqual(res.stars, 1);
-  assert.strictEqual(play(Levels.byId(27), 'REPITA 72 [PF REPCONT / 2 PD 15]').stars, 3);
-  assert.strictEqual(Levels.techniqueOf(Levels.byId(4)), null);
-  assert.strictEqual(Levels.techniqueOf(Levels.byId(5)), 'REPITA');
+  assert.strictEqual(res.stars, 2);
+  assert.strictEqual(play(Levels.byId(27), 'REPITA 72 [PF REPCONT / 2 PD 15]').stars, 5);
+});
+test('traço repetido por cima do tracejado: passa no Reino 3+, reprova no Reino 2', () => {
+  const r19 = play(Levels.byId(19), 'REPITA 24 [REPITA 6 [PF 50 PD 60] PD 30]'); // roseta desenhada 2 vezes
+  assert.ok(r19.completed, r19.text);
+  assert.ok(r19.deductions.some((d) => d.key === 'repetidas'));
+  assert.ok(!play(Levels.byId(18), 'REPITA 12 [PF 80 PD 60]').completed); // hexágono 2 vezes, Reino 2
+});
+test('usar todas as dicas tira 1 estrela (Reino 3+)', () => {
+  const lvl = Levels.byId(20);
+  const r = Logo.compile(lvl.solution);
+  const st = Turtle.simulate(r.actions, Turtle.createState());
+  assert.strictEqual(Levels.evaluate(lvl, { analysis: r.analysis, stats: r.stats, state: st, hintsUsed: 2 }).stars, 5);
+  assert.strictEqual(Levels.evaluate(lvl, { analysis: r.analysis, stats: r.stats, state: st, hintsUsed: 3 }).stars, 4);
+});
+test('desenho errado continua reprovando no Reino 3+', () => {
+  assert.ok(!play(Levels.byId(19), 'REPITA 12 [REPITA 6 [PF 40 PD 60] PD 30]').completed);
+});
+
+/* --------------- estrelas mínimas para romper (Reino 3 em diante) --------------- */
+const idsDoReino = (n) => Cultivo.REINOS[n - 1].subEstagios.flatMap((st) => st.desafiosIds);
+test('Reino 3: precisa de 3 de 5 estrelas em todos os desafios para romper', () => {
+  const d = vazio();
+  conclui(d, idsDoReino(1).concat(idsDoReino(2)));
+  conclui(d, idsDoReino(3), 5);
+  d.levels[11].stars = 2; // um desafio abaixo do mínimo
+  assert.ok(!Cultivo.reinoRompido(d, 3));
+  assert.ok(!Cultivo.levelUnlocked(d, 21), 'o Reino 4 continua selado');
+  assert.deepStrictEqual(Cultivo.faltamEstrelas(d, 3), [11]);
+  assert.strictEqual(Cultivo.proximo(d).id, 11, 'o próximo é refazer o desafio abaixo do mínimo');
+  d.levels[11].stars = 3;
+  assert.ok(Cultivo.reinoRompido(d, 3) && Cultivo.levelUnlocked(d, 21));
+});
+test('Reino 6: precisa de 4 de 5 estrelas', () => {
+  const d = vazio();
+  conclui(d, Cultivo.ORDER, 3);
+  assert.ok(Cultivo.reinoRompido(d, 5));
+  assert.ok(!Cultivo.reinoRompido(d, 6));
+  conclui(d, idsDoReino(6), 4);
+  assert.ok(Cultivo.reinoRompido(d, 6));
+});
+test('Qi conta só os desafios com as estrelas mínimas', () => {
+  const d = vazio();
+  conclui(d, idsDoReino(1).concat(idsDoReino(2)));
+  conclui(d, [10, 13], 2);
+  assert.strictEqual(Cultivo.situacao(d).qi, 0);
+  conclui(d, [10], 4);
+  assert.strictEqual(Cultivo.situacao(d).qi, 17);
+});
+test('estrelas antigas (escala de 3) do Reino 3+ são convertidas para 5', () => {
+  const d = vazio();
+  d.levels = { 4: { completed: true, stars: 2 }, 10: { completed: true, stars: 3 }, 11: { completed: true, stars: 2 }, 14: { completed: true, stars: 1 } };
+  assert.ok(Cultivo.migrarEstrelas(d));
+  assert.deepStrictEqual([d.levels[4].stars, d.levels[10].stars, d.levels[11].stars, d.levels[14].stars], [2, 5, 4, 3]);
+  assert.ok(!Cultivo.migrarEstrelas(d), 'não converte duas vezes');
 });
 
 /* ---------------- código de progresso: versão antiga (TAR) -------------- */
@@ -474,20 +538,30 @@ test('código antigo TAR- (15 níveis, 7 aulas) continua sendo importado', () =>
   const antigos = Levels.LEVELS.filter((l) => l.id <= 15);
   const aulas7 = TUTORIAL.filter((a) => a.id <= 7);
   const origem = dados('Bia', { 1: { completed: true, stars: 3 }, 9: { completed: true, stars: 2 }, 15: { completed: true, stars: 1 } }, { 2: true });
-  const v1 = Progresso.gerarCodigo(origem, antigos, aulas7).replace(/^TAR2-/, 'TAR-');
+  const v1 = Progresso.gerarCodigo(origem, antigos, aulas7, 1);
   const novo = dados('');
   const r = Progresso.importar(novo, v1, 'Bia', L, TUTORIAL);
   assert.ok(r.ok, r.motivo);
   assert.strictEqual(r.versao, 1);
-  assert.deepStrictEqual([novo.levels[1].stars, novo.levels[9].stars, novo.levels[15].stars], [3, 2, 1]);
+  // nível 15 está no Reino 4 (escala de 5): 1 estrela antiga vira 3 de 5
+  assert.deepStrictEqual([novo.levels[1].stars, novo.levels[9].stars, novo.levels[15].stars], [3, 2, 3]);
   assert.ok(novo.lessons[2] && !novo.levels[16]);
 });
-test('código TAR2 leva os 36 desafios e as 10 aulas', () => {
-  const origem = dados('Caio', { 36: { completed: true, stars: 3 }, 16: { completed: true, stars: 2 } }, { 10: true });
+test('código TAR2 (anterior) é lido e convertido para a escala de 5', () => {
+  const origem = dados('Duda', { 10: { completed: true, stars: 3 }, 5: { completed: true, stars: 2 } });
+  const c = Progresso.gerarCodigo(origem, L, TUTORIAL, 2);
+  assert.match(c, /^TAR2-/);
+  const novo = dados('');
+  const r = Progresso.importar(novo, c, 'Duda', L, TUTORIAL);
+  assert.ok(r.ok && r.versao === 2, r.motivo);
+  assert.deepStrictEqual([novo.levels[10].stars, novo.levels[10].escala, novo.levels[5].stars], [5, 5, 2]);
+});
+test('código TAR3 leva os 36 desafios (até 5 estrelas) e as 10 aulas', () => {
+  const origem = dados('Caio', { 36: { completed: true, stars: 5 }, 30: { completed: true, stars: 4 }, 16: { completed: true, stars: 2 } }, { 10: true });
   const c = Progresso.gerarCodigo(origem, L, TUTORIAL);
   const novo = dados('');
   assert.ok(Progresso.importar(novo, c, 'Caio', L, TUTORIAL).ok);
-  assert.deepStrictEqual([novo.levels[36].stars, novo.levels[16].stars], [3, 2]);
+  assert.deepStrictEqual([novo.levels[36].stars, novo.levels[30].stars, novo.levels[16].stars], [5, 4, 2]);
   assert.ok(novo.lessons[10]);
 });
 

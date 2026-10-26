@@ -81,13 +81,14 @@
     level(id) { return this.data.levels[id] || { stars: 0, completed: false }; },
 
     /** Guarda o resultado de um nível (mantém a melhor marca). */
-    recordLevel(id, stars, size) {
+    recordLevel(id, stars, size, escala5) {
       const prev = this.level(id);
       this.data.levels[id] = {
         completed: true,
         stars: Math.max(prev.stars || 0, stars),
         size: prev.size ? Math.min(prev.size, size) : size,
       };
+      if (escala5) this.data.levels[id].escala = 5; // estrelas de 0 a 5 (Reino 3 em diante)
       this.save();
     },
 

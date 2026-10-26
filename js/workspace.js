@@ -139,6 +139,7 @@
         ${o.palette ? `
         <section class="panel commands-panel">
           <div class="panel-head"><h3 class="panel-title">${ICON.book} Comandos da Linguagem</h3></div>
+          <p class="cmd-typing-note">⌨️ Consulta: digite os comandos no editor com o teclado.</p>
           <div class="cmd-list">${commandTiles()}</div>
         </section>` : ''}
         <section class="panel speed-panel">
@@ -265,7 +266,10 @@
       this.root.addEventListener('click', (e) => {
         const b = e.target.closest('[data-act], [data-insert], [data-color]');
         if (!b || b.disabled) return;
-        if (b.dataset.insert !== undefined) return this.insert({ code: b.dataset.insert });
+        if (b.dataset.insert !== undefined) {
+          if (this.insertDisabled) return; // Reino 3+: blocos só para consulta
+          return this.insert({ code: b.dataset.insert });
+        }
         if (b.dataset.color !== undefined) return this.setPenColor(b.dataset.color);
         const act = b.dataset.act;
         const fn = {
@@ -322,6 +326,19 @@
     /** Mostra os blocos da linguagem avançada (PARA, REPCONT, SE, PARE). */
     setAdvanced(on) {
       this.root.classList.toggle('show-advanced', !!on);
+    }
+
+    /**
+     * Liga/desliga a inserção de código ao clicar nos blocos de comando.
+     * Desligada (Reino 3 em diante), a lista vira só consulta: o aluno digita.
+     */
+    setInsertEnabled(on) {
+      this.insertDisabled = !on;
+      this.root.classList.toggle('no-insert', !on);
+      this.root.querySelectorAll('.cmd-tile').forEach((t) => {
+        t.setAttribute('aria-disabled', String(!on));
+        t.title = on ? 'Inserir no editor' : 'Só consulta: digite este comando no editor';
+      });
     }
 
     applySettings() {

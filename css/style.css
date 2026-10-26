@@ -846,3 +846,22 @@ dialog.breakthrough-modal { border-color: var(--yellow); box-shadow: 0 0 60px rg
   .realm-status { grid-column: 1 / -1; align-items: flex-start; text-align: left; }
   .realm-stages { grid-template-columns: 1fr; }
 }
+
+/* ---------------------- Estrelas (escala de 5) e consulta ---------------------- */
+.cmd-typing-note { display: none; margin: 0 12px 8px; font-size: 0.85rem; font-weight: 700; color: #fde68a; }
+.no-insert .cmd-typing-note { display: block; }
+.no-insert .cmd-tile { cursor: default; }
+.no-insert .cmd-tile:hover { background: none; }
+.reward-stars.five { font-size: 1.8rem; gap: 6px; }
+.hud-stars.five { font-size: 1.45rem; gap: 2px; }
+.stars-big.five { font-size: 2.3rem; letter-spacing: 0.1em; }
+.chip-min { background: rgba(167, 139, 250, 0.2); border-color: #a78bfa; color: #ddd6fe; }
+.realm-min { margin: 4px 0 0; font-size: 0.84rem; color: #fde68a; }
+.lvl-card.below-min { border-color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.below-tag { font-size: 0.72rem; font-weight: 800; color: #fbbf24; }
+.deductions { margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: var(--err-bg); border: 1px solid rgba(239, 68, 68, 0.45); }
+.deductions ul { margin: 0; padding-left: 1.1em; }
+.deductions li { margin: 3px 0; }
+.ded-title { margin: 0 0 4px; font-weight: 800; }
+.ded-none { background: var(--ok-bg); border-color: rgba(34, 197, 94, 0.5); font-weight: 700; }
+.min-warning { margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-bg); border: 1px solid rgba(250, 204, 21, 0.5); }

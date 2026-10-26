@@ -17,6 +17,8 @@
   const $$ = (sel, el) => Array.from((el || document).querySelectorAll(sel));
 
   Store.load();
+  // Estrelas antigas (escala de 3) dos desafios do Reino 3 em diante → escala de 5.
+  Cultivo.migrarEstrelas(Store.data);
   // Progresso antigo (15 níveis): marca em silêncio os reinos já rompidos.
   Cultivo.registrarRompimentos(Store.data);
   Store.save();
@@ -47,8 +49,9 @@
     return '★'.repeat(n) + '☆'.repeat(total - n);
   }
 
-  function starsHTML(n) {
-    return `<span class="stars" aria-label="${n} de 3 estrelas"><span aria-hidden="true">${starsText(n)}</span></span>`;
+  function starsHTML(n, total) {
+    total = total || 3;
+    return `<span class="stars" aria-label="${n} de ${total} estrelas"><span aria-hidden="true">${starsText(n, total)}</span></span>`;
   }
 
   /** Janela modal genérica (usa <dialog>). */
@@ -99,8 +102,9 @@
   function progress() {
     const done = JORNADA.filter((l) => Store.level(l.id).completed).length;
     const stars = JORNADA.reduce((s, l) => s + (Store.level(l.id).stars || 0), 0);
+    const maxStars = JORNADA.reduce((s, l) => s + Levels.maxStarsOf(l), 0);
     const next = Cultivo.proximo(Store.data) || JORNADA[JORNADA.length - 1];
-    return { done, stars, next, total: JORNADA.length, badges: Object.keys(Store.data.achievements).length };
+    return { done, stars, maxStars, next, total: JORNADA.length, badges: Object.keys(Store.data.achievements).length };
   }
 
   /** Rótulo curto de um desafio: "Desafio 9". */
@@ -123,10 +127,12 @@
     card.setAttribute('aria-label', `Reino ${sit.reino.id}: ${sit.reino.nome}, ${sit.estagio.nome}. Título: ${sit.titulo}. Energia espiritual (Qi) ${sit.qi}% até o rompimento.`);
     const lvl = (currentView === 'desafio' && activeLevel && activeLevel.id !== 'custom') ? activeLevel : p.next;
     const st = Store.level(lvl.id).stars || 0;
+    const maxS = Levels.maxStarsOf(lvl);
     const box = $('#hud-stars');
-    box.innerHTML = [1, 2, 3].map((i) => `<span class="${i <= st ? 'on' : ''}" aria-hidden="true">${i <= st ? '★' : '☆'}</span>`).join('');
-    box.setAttribute('aria-label', `${nomeDesafio(lvl)}: ${st} de 3 estrelas. Total: ${p.stars} de ${p.total * 3}.`);
-    box.title = `Estrelas do ${nomeDesafio(lvl).toLowerCase()} · total ${p.stars}/${p.total * 3}`;
+    box.classList.toggle('five', maxS === 5);
+    box.innerHTML = Array.from({ length: maxS }, (_, k) => k + 1).map((i) => `<span class="${i <= st ? 'on' : ''}" aria-hidden="true">${i <= st ? '★' : '☆'}</span>`).join('');
+    box.setAttribute('aria-label', `${nomeDesafio(lvl)}: ${st} de ${maxS} estrelas. Total: ${p.stars} de ${p.maxStars}.`);
+    box.title = `Estrelas do ${nomeDesafio(lvl).toLowerCase()} · total ${p.stars}/${p.maxStars}`;
     const nb = $('#nav-badges');
     if (nb) nb.textContent = p.badges ? ` ${p.badges}` : '';
   }
@@ -685,16 +691,19 @@
     const res = Store.level(id);
     const state = res.completed ? 'done' : open ? 'open' : 'locked';
     const n = Cultivo.numero(id);
-    const label = `Desafio ${n}: ${l.title}. ` + (state === 'done' ? `Concluído com ${res.stars} de 3 estrelas.` : state === 'open' ? 'Disponível.' : 'Selado.');
+    const maxS = Levels.maxStarsOf(l);
+    const minS = Cultivo.minEstrelas(id);
+    const abaixo = state === 'done' && minS && res.stars < minS;
+    const label = `Desafio ${n}: ${l.title}. ` + (state === 'done' ? `Concluído com ${res.stars} de ${maxS} estrelas.${abaixo ? ` Precisa de ${minS} para romper o reino.` : ''}` : state === 'open' ? 'Disponível.' : 'Selado.');
     const inner = `
       <span class="lvl-num" aria-hidden="true">${n}</span>
       <span class="lvl-icon" aria-hidden="true">${state === 'locked' ? '🔒' : l.icon}</span>
       <span class="lvl-text" aria-hidden="true">
         <b>${esc(l.title)}</b>
         <small>${esc(l.shape || '')}</small>
-        <span class="lvl-state">${state === 'done' ? `<span class="stars">${starsText(res.stars)}</span>` : state === 'open' ? '▶ Cultivar' : '🔒 Selado'}</span>
+        <span class="lvl-state">${state === 'done' ? `<span class="stars">${starsText(res.stars, maxS)}</span>${abaixo ? ` <span class="below-tag">precisa de ${minS}★</span>` : ''}` : state === 'open' ? '▶ Cultivar' : '🔒 Selado'}</span>
       </span>`;
-    const cls = `lvl-card ${state}${id === nextId && state === 'open' ? ' current' : ''}${l.limit ? ' limited' : ''}`;
+    const cls = `lvl-card ${state}${id === nextId && (state === 'open' || abaixo) ? ' current' : ''}${l.limit ? ' limited' : ''}${abaixo ? ' below-min' : ''}`;
     return state === 'locked'
       ? `<div class="${cls}" role="img" aria-label="${esc(label)}">${inner}</div>`
       : `<a class="${cls}" href="#/desafio/${id}" aria-label="${esc(label)}">${inner}</a>`;
@@ -709,8 +718,11 @@
       const aberto = ks.some((k) => isAdmin() || Cultivo.stageUnlocked(Store.data, k));
       const ids = r.subEstagios.flatMap((st) => st.desafiosIds);
       const feitos = ids.filter((id) => Store.level(id).completed).length;
-      const qi = Math.round((feitos / ids.length) * 100);
+      // Qi = desafios concluídos COM as estrelas mínimas (igual ao cabeçalho)
+      const qi = Math.round((ids.filter((id) => Cultivo.cumprido(Store.data, id)).length / ids.length) * 100);
       const estado = rompido ? 'rompido' : aberto ? 'aberto' : 'selado';
+      const picoVencido = r.subEstagios[2].desafiosIds.every((id) => Store.level(id).completed);
+      const faltam = Cultivo.faltamEstrelas(Store.data, r.id);
       return `
         <section class="realm realm-${estado}${sit.reino.id === r.id ? ' realm-current' : ''}" style="--aura:${r.corAura}" aria-labelledby="realm-${r.id}">
           <header class="realm-head">
@@ -720,13 +732,14 @@
               <h3 id="realm-${r.id}">${esc(r.nome)}</h3>
               <p class="realm-desc">${esc(r.descricao)}</p>
               <p class="realm-focus"><b>Foco:</b> ${esc(r.foco)}</p>
+              ${r.estrelasMinimas ? `<p class="realm-min">⛰️ Para romper: pelo menos <b>${r.estrelasMinimas} de 5 ★</b> em cada desafio do reino.</p>` : ''}
             </div>
             <div class="realm-status">
-              <span class="realm-badge">${rompido ? '✨ Rompido' : aberto ? '🔥 Em cultivo' : '🔒 Selado'}</span>
+              <span class="realm-badge">${rompido ? '✨ Rompido' : picoVencido && (faltam.length || ids.some((id) => !Store.level(id).completed)) ? '⚠️ Faltam estrelas' : aberto ? '🔥 Em cultivo' : '🔒 Selado'}</span>
               <span class="qi-line"><span class="qi-label">Qi</span>
                 <span class="qi-bar" role="progressbar" aria-label="Energia espiritual do Reino ${r.id}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${qi}"><i style="width:${Math.max(qi, 2)}%"></i></span>
                 <b>${qi}%</b></span>
-              <small>${feitos}/${ids.length} desafios${rompido ? ' · título: ' + esc(r.titulo) : ''}</small>
+              <small>${feitos}/${ids.length} desafios${rompido ? ' · título: ' + esc(r.titulo) : ''}${faltam.length ? ` · ${faltam.length} abaixo do mínimo` : ''}</small>
             </div>
           </header>
           <div class="realm-stages">
@@ -755,7 +768,7 @@
             <p class="cult-realm"><span aria-hidden="true">${sit.reino.icone}</span> Reino ${sit.reino.id}: ${esc(sit.reino.nome)}</p>
             <p class="cult-stage">${esc(sit.completo ? 'Grande Perfeição' : sit.estagio.nome)} · <b>${esc(sit.titulo)}</b></p>
             <p class="big-number">${p.done}<small>/${p.total} desafios</small></p>
-            <p><span class="stars big">★</span> ${p.stars} de ${p.total * 3} estrelas</p>
+            <p><span class="stars big">★</span> ${p.stars} de ${p.maxStars} estrelas</p>
             <a class="btn btn-primary btn-block" href="#/desafio/${p.next.id}">▶ Cultivar: ${esc(nomeDesafio(p.next).toLowerCase())}</a>
             <div class="identity">
               <span>Jogador: <b>${esc(Store.data.nome || '—')}</b></span>
@@ -766,11 +779,10 @@
           <div class="card legend">
             <h3>Como ganhar estrelas</h3>
             <ul>
-              <li><span class="stars">★☆☆</span> desenho correto</li>
-              <li><span class="stars">★★☆</span> usando a técnica do reino (REPITA, PARA, REPCONT ou recursão)</li>
-              <li><span class="stars">★★★</span> solução eficiente (poucos comandos)</li>
+              <li><b>Reinos 1 e 2 (3 ★):</b> <span class="stars">★</span> desenho correto · <span class="stars">★★</span> com a técnica · <span class="stars">★★★</span> código eficiente</li>
+              <li><b>Reino 3 em diante (5 ★):</b> desenho certo vale passar; você começa com <span class="stars">★★★★★</span> e perde 1 ★ por: não usar a técnica pedida, passar da meta de comandos (2 se passar do dobro), passar do limite, repetir linhas por cima do tracejado ou usar todas as dicas.</li>
             </ul>
-            <p class="muted">📏 No Reino 4 (Refinamento Puro) existe um <b>limite de comandos</b>: acima dele o desafio não conta.</p>
+            <p class="muted">⛰️ Para romper os Reinos 3 a 5: pelo menos 3 ★ em cada desafio. Reino 6: pelo menos 4 ★.</p>
           </div>
           <div class="card legend">
             <h3>⛰️ O Gargalo</h3>
@@ -830,6 +842,9 @@
     const tech = Levels.techniqueOf(level);
     const par = Levels.parOf(level);
     const CRIT2 = { REPITA: 'Usou o REPITA', PARA: 'Criou um procedimento', REPCONT: 'Usou REPCONT', RECURSAO: 'Usou recursão' };
+    const maxS = Levels.maxStarsOf(level);
+    const minS = onde ? onde.reino.estrelasMinimas : 0;
+    const flex = maxS === 5;
     const crit2 = tech ? CRIT2[tech] : 'Sem comandos sobrando';
     info.innerHTML = `
       <div class="aside-head">
@@ -852,9 +867,12 @@
         <canvas class="target-canvas" role="img" aria-label="Desenho-alvo do nível"></canvas>
         <figcaption>🎯 Desenho-alvo · <span class="start-mark" aria-hidden="true">▲</span> início da tartaruga</figcaption>
         <ul class="chips" aria-label="Regras do desafio">
-          ${reqs.map((r) => `<li class="chip chip-req">📌 Obrigatório: ${esc(Levels.requirementLabel(r))}</li>`).join('')}
+          ${reqs.map((r) => flex
+            ? `<li class="chip chip-req">📌 Pedido: ${esc(Levels.requirementLabel(r))} (sem ele, −1 ★)</li>`
+            : `<li class="chip chip-req">📌 Obrigatório: ${esc(Levels.requirementLabel(r))}</li>`).join('')}
           ${level.finalAtStart ? '<li class="chip chip-req">📍 Termine no ponto inicial</li>' : ''}
-          ${level.limit ? `<li class="chip chip-limit">📏 Limite: até ${level.limit} comandos</li>` : ''}
+          ${level.limit ? `<li class="chip chip-limit">📏 Limite: até ${level.limit} comandos${flex ? ' (acima, −1 ★)' : ''}</li>` : ''}
+          ${minS ? `<li class="chip chip-min">⛰️ Mínimo para romper: ${minS} ★</li>` : ''}
         </ul>
         <label class="check small"><input type="checkbox" data-ghost ${Store.settings.ghost ? 'checked' : ''}> Mostrar o alvo tracejado no mundo</label>
       </figure>
@@ -870,9 +888,16 @@
         <div class="reward-stars" aria-hidden="true"></div>
         <p class="reward-text"></p>
         <ul class="reward-rules">
+          ${flex ? `
+          <li>★★★★★ desenho certo${tech ? ', ' + esc(Levels.TECHNIQUE_LABEL[tech]) : ''}, com até ${par} comandos</li>
+          ${tech || reqs.length ? '<li>−1 ★ não usar a técnica pedida</li>' : ''}
+          <li>−1 ★ passar da meta de comandos (−2 se passar do dobro)</li>
+          ${level.limit ? `<li>−1 ★ passar do limite de ${level.limit} comandos</li>` : ''}
+          <li>−1 ★ repetir linhas por cima do tracejado</li>
+          <li>−1 ★ usar todas as dicas</li>` : `
           <li>★ desenho correto</li>
           <li>★★ ${tech ? Levels.TECHNIQUE_LABEL[tech] : 'sem comandos sobrando'}</li>
-          <li>★★★ até ${par} comando${par > 1 ? 's' : ''}</li>
+          <li>★★★ até ${par} comando${par > 1 ? 's' : ''}</li>`}
         </ul>
       </section>
 
@@ -880,10 +905,15 @@
         <h3 id="lp-title"><span class="sec-icon" aria-hidden="true">🏁</span> Progresso do Desafio</h3>
         <div class="lp-body">
           <div class="ring" role="img" aria-label="0% concluído"><span>0%</span></div>
-          <ul class="criteria">
+          <ul class="criteria">${flex ? `
+            <li data-key="desenho"><span class="ck" aria-hidden="true"></span> Desenho correto</li>
+            <li data-key="tecnica"><span class="ck" aria-hidden="true"></span> ${tech ? crit2 : 'Técnica pedida'}</li>
+            <li data-key="meta"><span class="ck" aria-hidden="true"></span> Dentro da meta${level.limit ? ' e do limite' : ''}</li>
+            <li data-key="repetidas"><span class="ck" aria-hidden="true"></span> Sem linhas repetidas</li>
+            <li data-key="dicas"><span class="ck" aria-hidden="true"></span> Sem usar todas as dicas</li>` : `
             <li data-crit="1"><span class="ck" aria-hidden="true"></span> Desenho correto</li>
             <li data-crit="2"><span class="ck" aria-hidden="true"></span> ${crit2}</li>
-            <li data-crit="3"><span class="ck" aria-hidden="true"></span> Solução eficiente</li>
+            <li data-crit="3"><span class="ck" aria-hidden="true"></span> Solução eficiente</li>`}
           </ul>
         </div>
         <p class="lp-note muted small"></p>
@@ -893,7 +923,7 @@
       <section class="in-card admin-solution" aria-labelledby="sol-title">
         <h3 id="sol-title"><span class="sec-icon" aria-hidden="true">👨‍🏫</span> Solução (professor)</h3>
         <pre class="snippet">${esc(level.solution)}</pre>
-        <p class="muted small">Meta para ⭐⭐⭐: até ${par} comando${par > 1 ? 's' : ''}${level.limit ? ` (limite: ${level.limit})` : ''}. Outras soluções que gerem o mesmo desenho também valem.</p>
+        <p class="muted small">Meta para ${maxS} ★: até ${par} comando${par > 1 ? 's' : ''}${level.limit ? ` (limite: ${level.limit})` : ''}${minS ? ` · mínimo para romper: ${minS} ★` : ''}. Outras soluções que gerem o mesmo desenho também valem.</p>
         <div class="custom-actions">
           <button type="button" class="btn btn-sm btn-primary" data-show-solution>▶ Ver resolvendo</button>
           <button type="button" class="btn btn-sm" data-copy-solution>📋 Copiar</button>
@@ -906,8 +936,10 @@
         <a class="btn map-btn" href="#/desafios">☯️ Mapa dos Reinos</a>
       </div>`;
 
-    updateLevelPanel(res.completed ? res.stars : 0, 'best');
+    // o painel lê o desafio aberto e a sessão: defina-os antes de atualizar
+    activeLevel = level;
     levelSession = { hints: 0, hadErrors: false, level, custom };
+    updateLevelPanel(res.completed ? res.stars : 0, 'best');
     updateHintButton();
     $('[data-hint]', info).addEventListener('click', showHint);
     $('[data-ghost]', info).addEventListener('change', (e) => {
@@ -934,6 +966,8 @@
     levelWS.stage.setGhost(Levels.targetOf(level));
     // blocos PARA/REPCONT/SE/PARE no painel a partir do Reino 5
     levelWS.setAdvanced(custom || (onde && onde.reino.id >= 5) || /PARA|REPCONT/i.test(level.solution));
+    // a partir do Reino 3 os blocos laterais são só consulta: o aluno digita no teclado
+    levelWS.setInsertEnabled(custom || !onde || onde.reino.id < 3);
     requestAnimationFrame(() => renderTargetPreview(level));
   }
 
@@ -943,22 +977,41 @@
     levelWS.run({ speed: 'normal' });
   }
 
-  /** Atualiza Recompensas e o anel "Progresso do Nível" (0 a 3 critérios). */
-  function updateLevelPanel(stars, source) {
+  /**
+   * Atualiza Recompensas e o anel "Progresso do Desafio".
+   * result (opcional) = avaliação da última execução: na escala de 5 estrelas
+   * marca cada critério conforme os descontos.
+   */
+  function updateLevelPanel(stars, source, result) {
     const view = $('#view-desafio');
-    const best = levelSession && levelSession.custom ? 0 : (activeLevel ? Store.level(activeLevel.id).stars || 0 : 0);
+    const lvl = activeLevel;
+    const maxS = lvl ? Levels.maxStarsOf(lvl) : 3;
+    const minS = lvl && Cultivo.onde(lvl.id) ? Cultivo.minEstrelas(lvl.id) : 0;
+    const best = levelSession && levelSession.custom ? 0 : (lvl ? Store.level(lvl.id).stars || 0 : 0);
     const rs = $('.reward-stars', view);
     if (!rs) return;
-    rs.innerHTML = [1, 2, 3].map((i) => `<span class="${i <= best ? 'on' : ''}">${i <= best ? '★' : '☆'}</span>`).join('');
+    rs.classList.toggle('five', maxS === 5);
+    rs.innerHTML = Array.from({ length: maxS }, (_, k) => k + 1).map((i) => `<span class="${i <= best ? 'on' : ''}">${i <= best ? '★' : '☆'}</span>`).join('');
     $('.reward-text', view).textContent = best
-      ? `Sua melhor marca: ${best} de 3 estrelas.${best < 3 ? ' Dá para melhorar!' : ' Perfeito!'}`
+      ? `Sua melhor marca: ${best} de ${maxS} estrelas.${minS && best < minS ? ` Para romper o reino, precisa de ${minS}.` : best < maxS ? ' Dá para melhorar!' : ' Perfeito!'}`
       : 'Conclua o desafio para ganhar suas estrelas!';
-    const pct = Math.round((stars / 3) * 100);
+    if (maxS === 5) {
+      const keys = result && result.deductions ? result.deductions.map((d) => (d.key === 'meta2' || d.key === 'limite' ? 'meta' : d.key)) : null;
+      $$('.criteria li', view).forEach((li) => {
+        const k = li.dataset.key;
+        let ok;
+        if (result) ok = !!result.completed && (k === 'desenho' || !keys.includes(k));
+        else ok = stars > 0 && (k === 'desenho' || stars >= 5);
+        li.classList.toggle('ok', ok);
+        $('.ck', li).textContent = ok ? '✓' : '';
+      });
+    }
+    const pct = Math.round((stars / maxS) * 100);
     const ring = $('.ring', view);
     ring.style.setProperty('--p', pct);
     ring.setAttribute('aria-label', pct + '% concluído');
     $('span', ring).textContent = pct + '%';
-    $$('.criteria li', view).forEach((li) => {
+    $$('.criteria li[data-crit]', view).forEach((li) => {
       const ok = stars >= +li.dataset.crit;
       li.classList.toggle('ok', ok);
       $('.ck', li).textContent = ok ? '✓' : '';
@@ -976,7 +1029,11 @@
     const b = $('#view-desafio [data-hint]');
     const total = s.level.hints.length;
     if (s.hints >= total) { b.textContent = 'Sem mais dicas'; b.disabled = true; }
-    else { b.textContent = s.hints ? `Mais uma dica (${s.hints + 1} de ${total})` : `Mostrar dica (1 de ${total})`; b.disabled = false; }
+    else {
+      const custa = Levels.maxStarsOf(s.level) === 5 && s.hints === total - 1 ? ' — custa 1 ★' : '';
+      b.textContent = (s.hints ? `Mais uma dica (${s.hints + 1} de ${total})` : `Mostrar dica (1 de ${total})`) + custa;
+      b.disabled = false;
+    }
   }
 
   function showHint() {
@@ -993,9 +1050,9 @@
     const s = levelSession;
     const level = s.level;
     fireEvent('run', { analysis: compiled.analysis });
-    const result = Levels.evaluate(level, { analysis: compiled.analysis, stats: compiled.stats, state });
+    const result = Levels.evaluate(level, { analysis: compiled.analysis, stats: compiled.stats, state, hintsUsed: s.hints });
 
-    updateLevelPanel(result.completed ? result.stars : 0, 'try');
+    updateLevelPanel(result.completed ? result.stars : 0, 'try', result);
     if (!result.completed) {
       s.hadErrors = true;
       if (!s.custom && !isAdmin()) { Store.data.attempts[level.id] = (Store.data.attempts[level.id] || 0) + 1; Store.save(); }
@@ -1010,13 +1067,13 @@
     }
 
     if (isAdmin()) {
-      levelWS.showMessage(`<p class="msg-title">✅ A solução confere: ${result.stars} de 3 estrelas.</p><p class="muted">Modo professor: nada foi salvo no progresso deste computador.</p>`, 'success');
+      levelWS.showMessage(`<p class="msg-title">✅ A solução confere: ${result.stars} de ${result.maxStars} estrelas.</p><p class="muted">Modo professor: nada foi salvo no progresso deste computador.</p>`, 'success');
       return;
     }
     levelWS.showMessage(`<p class="msg-title">🎉 ${esc(result.title)} ${esc(level.success)}</p>`, 'success');
     if (!s.custom) {
-      Store.recordLevel(level.id, result.stars, compiled.analysis.size);
-      updateLevelPanel(result.stars, 'try');
+      Store.recordLevel(level.id, result.stars, compiled.analysis.size, result.maxStars === 5);
+      updateLevelPanel(result.stars, 'try', result);
       fireEvent('levelComplete', { level, stars: result.stars, hadErrors: s.hadErrors || (Store.data.attempts[level.id] || 0) > 0 });
       const rompidos = Cultivo.registrarRompimentos(Store.data);
       Store.save();
@@ -1064,9 +1121,19 @@
     const html = `
       <div class="success-head">
         <p class="success-text">${esc(level.success)}</p>
-        <p class="stars-big" aria-label="${result.stars} de 3 estrelas"><span aria-hidden="true">${starsText(result.stars)}</span></p>
-        <p class="sr-only">Você ganhou ${result.stars} de 3 estrelas.</p>
+        <p class="stars-big${result.maxStars === 5 ? ' five' : ''}" aria-label="${result.stars} de ${result.maxStars} estrelas"><span aria-hidden="true">${starsText(result.stars, result.maxStars)}</span></p>
+        <p class="sr-only">Você ganhou ${result.stars} de ${result.maxStars} estrelas.</p>
       </div>
+      ${result.deductions ? (result.deductions.length
+        ? `<div class="deductions"><p class="ded-title">Descontos</p><ul>${result.deductions.map((d) => `<li><b>−${d.stars} ★</b> ${esc(d.text)}</li>`).join('')}</ul></div>`
+        : '<p class="deductions ded-none">✨ Nenhum desconto: técnica perfeita!</p>') : ''}
+      ${(() => {
+        const minS = custom ? 0 : Cultivo.minEstrelas(level.id);
+        const best = Store.level(level.id).stars || 0;
+        return minS && best < minS
+          ? `<p class="min-warning">⛰️ Desafio concluído! Mas para romper o Reino ${Cultivo.onde(level.id).reino.id} você precisa de pelo menos <b>${minS} ★</b> aqui. Refaça corrigindo os descontos.</p>`
+          : '';
+      })()}
       <table class="result-table">
         <tbody>
           <tr><th scope="row">Comandos utilizados</th><td>${a.commandsUsed.map((c) => `<code>${c}</code>`).join(' ')}</td></tr>
@@ -1092,7 +1159,7 @@
       actions.push({ label: 'Fechar', cls: 'btn-primary' });
     } else {
       if (next) actions.push({ label: `Próximo: ${esc(nomeDesafio(next).toLowerCase())} ▶`, cls: 'btn-primary', href: '#/desafio/' + next.id });
-      if (result.stars < 3) actions.push({ label: '🔁 Tentar 3 estrelas' });
+      if (result.stars < result.maxStars) actions.push({ label: '🔁 Tentar mais estrelas' });
       actions.push({ label: '☯️ Mapa', href: '#/desafios' });
     }
     const title = level.final ? '☯️ Grande Perfeição!' : '🎉 Técnica dominada!';
@@ -1406,7 +1473,7 @@
         <div class="stat card"><span class="stat-num">${lessons}/${TUTORIAL.length}</span><span>aulas concluídas</span></div>
         <div class="stat card"><span class="stat-num">${p.done}/${p.total}</span><span>desafios concluídos</span></div>
         <div class="stat card"><span class="stat-num">${Cultivo.situacao(Store.data).rompidos.length}/${Cultivo.REINOS.length}</span><span>reinos rompidos</span></div>
-        <div class="stat card"><span class="stat-num">${p.stars}/${p.total * 3}</span><span>estrelas</span></div>
+        <div class="stat card"><span class="stat-num">${p.stars}/${p.maxStars}</span><span>estrelas</span></div>
         <div class="stat card"><span class="stat-num">${p.badges}/${Achievements.ACHIEVEMENTS.length}</span><span>conquistas</span></div>
       </div>
       <ul class="badge-grid">
@@ -1483,7 +1550,7 @@
                 <h4>${l.icon} ${Cultivo.numero(l.id)}. ${esc(l.title)} <small class="muted">· ${esc(Cultivo.ESTAGIOS[Cultivo.onde(l.id).estagio.tipo].curto)}</small></h4>
                 <p class="small">${esc(l.challenge)}</p>
                 <pre class="snippet small">${esc(l.solution)}</pre>
-                <p class="muted small">⭐⭐⭐ até ${Levels.parOf(l)} comandos${l.limit ? ` · 📏 limite ${l.limit}` : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
+                <p class="muted small">${Levels.maxStarsOf(l)} ★ com até ${Levels.parOf(l)} comandos${l.limit ? ` · 📏 limite ${l.limit}` : ''}${Cultivo.minEstrelas(l.id) ? ` · mín. ${Cultivo.minEstrelas(l.id)} ★ para romper` : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
                 <details class="small"><summary>Dicas do nível</summary><ol>${l.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ol></details>
                 <div class="custom-actions">
                   <a class="btn btn-sm btn-primary" href="#/desafio/${l.id}/solucao">▶ Ver resolvendo</a>
@@ -1499,6 +1566,7 @@
         <p>O aluno aprende lógica de programação construindo desenhos: <b>escreve → executa → observa → identifica o erro → corrige</b>.
         A progressão vai de comandos simples (sequência) a ângulos, repetição (loop), laços aninhados, decomposição e engenharia reversa.</p>
         <p class="flow">APRENDER → EXPERIMENTAR → RESOLVER DESAFIOS → ROMPER REINOS → CRIAR → PROGRAMAR LIVREMENTE</p>
+        <p><b>Estrelas:</b> Reinos 1 e 2 usam 3 estrelas. A partir do Reino 3, são 5: o desafio passa sempre que o desenho estiver certo, e cada regra não cumprida tira 1 estrela (técnica, meta de comandos — 2 se passar do dobro —, limite, linhas repetidas por cima do tracejado, uso de todas as dicas). Para romper os Reinos 3 a 5, todos os desafios precisam de pelo menos 3 estrelas; no Reino 6, de 4. A partir do Reino 3 os blocos de comandos da lateral não inserem código: o aluno digita.</p>
         <p><b>O Dao dos Algoritmos:</b> 36 desafios em 6 reinos × 3 estágios (Inicial, Intermediário, Pico). Um estágio abre quando o anterior é concluído; vencer o Pico rompe o reino. Reino 1: sequência e precisão · Reino 2: REPITA e polígonos · Reino 3: laços aninhados · Reino 4: otimização com limite de comandos · Reino 5: REPCONT, procedimentos e a primeira recursão · Reino 6: fractais e recursão avançada.</p>
         <p class="muted">A verificação dos desafios compara o <b>desenho</b>, não o código: soluções diferentes são aceitas. Desenhos espelhados (PE em vez de PD), girados em 90° ou deslocados também valem.</p>
       </section>

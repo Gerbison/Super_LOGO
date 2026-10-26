@@ -791,59 +791,120 @@
   }
 
   /**
+   * Escala de estrelas do desafio:
+   *   Reinos 1 e 2 → 3 estrelas (regras originais).
+   *   Reino 3 em diante → 5 estrelas, com "modo flexível": o desafio passa se
+   *   o desenho estiver certo, e as regras (técnica, meta, limite, linhas
+   *   repetidas, dicas) só descontam estrelas.
+   * Desafios do professor (id 'custom') usam 3 estrelas.
+   */
+  function realmOf(level) {
+    const C = root.Cultivo;
+    const w = C && C.onde ? C.onde(level.id) : null;
+    return w ? w.reino.id : 0;
+  }
+
+  function maxStarsOf(level) {
+    return realmOf(level) >= 3 ? 5 : 3;
+  }
+
+  /** Requisitos (requires) que o código não atendeu. */
+  function missingRequirements(level, analysis) {
+    return (level.requires || []).filter((req) => {
+      if (req === 'PARA') return !analysis.usesProcedures;
+      if (req === 'REPCONT') return !analysis.usesRepcount;
+      const options = Array.isArray(req) ? req : [req];
+      return !options.some((r) => analysis.commandsUsed.includes(r));
+    });
+  }
+
+  function failureText(cmp) {
+    const shapeOk = cmp.precision >= 0.95 && cmp.coverage >= 0.9;
+    if (cmp.lengthRatio > 1.15) return 'Seu desenho tem linhas a mais (ou maiores) que o alvo. Observe: em que momento a tartaruga se afastou do tracejado?';
+    if (cmp.lengthRatio < 0.85) return 'Ainda falta desenhar uma parte. Compare com o alvo tracejado: o que está faltando?';
+    if (shapeOk && cmp.lengthRatio < 1) return 'Está quase igual! Mas seu desenho ficou um pouco menor que o alvo. Confira os números de passos.';
+    if (shapeOk) return 'Está quase igual! Mas seu desenho ficou um pouco maior que o alvo (ou repetiu alguma linha). Confira os números.';
+    return 'O tamanho está quase certo, mas a forma está diferente. Observe o desenho e pense: a tartaruga virou demais ou de menos?';
+  }
+
+  function efficiencyOf(analysis, par) {
+    if (analysis.size <= par) return { label: 'Ótima', icon: '🌟', text: `${analysis.size} comando(s) — dentro da meta de ${par}.` };
+    if (analysis.size <= par * 2) return { label: 'Boa', icon: '👍', text: `${analysis.size} comandos. Meta: até ${par}.` };
+    return { label: 'Pode melhorar', icon: '🔧', text: `${analysis.size} comandos. Dá para escrever com menos — meta: ${par}.` };
+  }
+
+  /**
    * Avalia uma tentativa do aluno.
-   *   attempt = { analysis, stats, state }   (state = estado final da tartaruga)
-   * Retorna { completed, stars, title, text, compare, efficiency }
+   *   attempt = { analysis, stats, state, hintsUsed }
+   * Retorna { completed, stars, maxStars, title, text, compare, efficiency, deductions }
+   *   deductions (só na escala de 5): [{ key, stars, text }] — o que custou estrelas.
    */
   function evaluate(level, attempt) {
     const { analysis, state } = attempt;
     const segs = state.segments;
     const target = targetOf(level);
+    const maxStars = maxStarsOf(level);
+    const flexible = maxStars === 5;
 
     if (!segs.length) {
       return {
-        completed: false, stars: 0, title: 'Quase!',
+        completed: false, stars: 0, maxStars, title: 'Quase!',
         text: state.penDown
           ? 'A tartaruga ainda não desenhou nada. Use PF para ela andar e deixar um rastro.'
           : 'A caneta está levantada, então a tartaruga não deixou rastro. Use BAIXE antes de andar.',
       };
     }
 
-    const cmp = root.Checker.compare(segs, target, { mode: level.match || 'shape', tolerance: level.tolerance || 5 });
+    const cmp = root.Checker.compare(segs, target, {
+      mode: level.match || 'shape', tolerance: level.tolerance || 5, allowOverdraw: flexible,
+    });
+    if (!cmp.ok) return { completed: false, stars: 0, maxStars, title: 'Quase!', text: failureText(cmp), compare: cmp };
 
-    if (!cmp.ok) {
-      let text;
-      const shapeOk = cmp.precision >= 0.95 && cmp.coverage >= 0.9;
-      if (cmp.lengthRatio > 1.15) {
-        text = 'Seu desenho tem linhas a mais (ou maiores) que o alvo. Observe: em que momento a tartaruga se afastou do tracejado?';
-      } else if (cmp.lengthRatio < 0.85) {
-        text = 'Ainda falta desenhar uma parte. Compare com o alvo tracejado: o que está faltando?';
-      } else if (shapeOk && cmp.lengthRatio < 1) {
-        text = 'Está quase igual! Mas seu desenho ficou um pouco menor que o alvo. Confira os números de passos.';
-      } else if (shapeOk) {
-        text = 'Está quase igual! Mas seu desenho ficou um pouco maior que o alvo (ou repetiu alguma linha). Confira os números.';
-      } else {
-        text = 'O tamanho está quase certo, mas a forma está diferente. Observe o desenho e pense: a tartaruga virou demais ou de menos?';
+    const par = parOf(level);
+    const efficiency = efficiencyOf(analysis, par);
+
+    /* ---------- Reino 3 em diante: passa pelo desenho, regras descontam ---------- */
+    if (flexible) {
+      const deductions = [];
+      const missing = missingRequirements(level, analysis).map(requirementLabel);
+      const tech = techniqueOf(level);
+      if (tech && !usesTechnique(analysis, tech)) {
+        const label = { REPITA: 'REPITA', PARA: 'um procedimento (PARA)', REPCONT: 'REPCONT', RECURSAO: 'recursão' }[tech];
+        if (!missing.includes(tech)) missing.push(label);
       }
-      return { completed: false, stars: 0, title: 'Quase!', text, compare: cmp };
+      [...new Set(missing)].forEach((m) => deductions.push({ key: 'tecnica', stars: 1, text: `Não usou a técnica pedida: ${m}.` }));
+      if (analysis.size > par) {
+        deductions.push({ key: 'meta', stars: 1, text: `Código maior que a meta: ${analysis.size} comandos (meta: até ${par}).` });
+        if (analysis.size > par * 2) deductions.push({ key: 'meta2', stars: 1, text: `Código com mais que o dobro da meta (${par * 2}).` });
+      }
+      if (level.limit && analysis.size > level.limit) {
+        deductions.push({ key: 'limite', stars: 1, text: `Passou do limite permitido: ${analysis.size} comandos (limite: ${level.limit}).` });
+      }
+      if (cmp.overdraw) {
+        deductions.push({ key: 'repetidas', stars: 1, text: `Linhas repetidas por cima do tracejado (o caminho ficou ${Math.round((cmp.lengthRatio - 1) * 100)}% maior que o alvo).` });
+      }
+      if ((attempt.hintsUsed || 0) >= (level.hints || []).length && (level.hints || []).length) {
+        deductions.push({ key: 'dicas', stars: 1, text: `Usou todas as ${level.hints.length} dicas.` });
+      }
+      const lost = deductions.reduce((s, d) => s + d.stars, 0);
+      const stars = Math.max(1, 5 - lost);
+      return { completed: true, stars, maxStars, title: 'Muito bem!', text: level.success, compare: cmp, efficiency, deductions };
     }
 
-    for (const req of level.requires || []) {
-      if (req === 'PARA' && analysis.usesProcedures) continue;
-      if (req === 'REPCONT' && analysis.usesRepcount) continue;
-      const options = Array.isArray(req) ? req : [req];
-      if (!options.some((r) => analysis.commandsUsed.includes(r))) {
-        return {
-          completed: false, stars: 0, compare: cmp,
-          title: 'O desenho ficou certo!',
-          text: `Mas neste desafio é preciso usar ${requirementLabel(req)}. Que tal reescrever o programa usando ${requirementLabel(req)}?`,
-        };
-      }
+    /* ---------- Reinos 1 e 2: regras originais (3 estrelas) ---------- */
+    const missing = missingRequirements(level, analysis);
+    if (missing.length) {
+      const req = requirementLabel(missing[0]);
+      return {
+        completed: false, stars: 0, maxStars, compare: cmp,
+        title: 'O desenho ficou certo!',
+        text: `Mas neste desafio é preciso usar ${req}. Que tal reescrever o programa usando ${req}?`,
+      };
     }
 
     if (level.limit && analysis.size > level.limit) {
       return {
-        completed: false, stars: 0, compare: cmp,
+        completed: false, stars: 0, maxStars, compare: cmp,
         title: 'O desenho está perfeito!',
         text: `Mas a técnica ainda gasta Qi demais: ${analysis.size} comandos. O limite deste desafio é ${level.limit}. Procure o padrão que se repete e refine o código.`,
       };
@@ -851,28 +912,24 @@
 
     if (level.finalAtStart && Math.hypot(state.x, state.y) > 2) {
       return {
-        completed: false, stars: 0, compare: cmp,
+        completed: false, stars: 0, maxStars, compare: cmp,
         title: 'Quase!',
         text: 'O desenho está certo, mas a tartaruga não voltou ao ponto inicial. Quanto ela precisa andar para trás?',
       };
     }
 
-    const par = parOf(level);
     let stars = 1;
     if (usesTechnique(analysis, techniqueOf(level))) stars = 2;
     if (stars === 2 && analysis.size <= par) stars = 3;
-
-    let efficiency;
-    if (analysis.size <= par) efficiency = { label: 'Ótima', icon: '🌟', text: `${analysis.size} comando(s) — dentro da meta de ${par}.` };
-    else if (analysis.size <= par * 2) efficiency = { label: 'Boa', icon: '👍', text: `${analysis.size} comandos. Meta para 3 estrelas: até ${par}.` };
-    else efficiency = { label: 'Pode melhorar', icon: '🔧', text: `${analysis.size} comandos. Dá para escrever com menos — meta: ${par}.` };
-
-    return { completed: true, stars, title: 'Muito bem!', text: level.success, compare: cmp, efficiency };
+    return { completed: true, stars, maxStars, title: 'Muito bem!', text: level.success, compare: cmp, efficiency, deductions: null };
   }
 
   /** Dica sobre como ganhar mais estrelas (mostrada após concluir). */
   function nextStarTip(level, result, analysis) {
-    if (result.stars >= 3) return null;
+    if (result.stars >= (result.maxStars || 3)) return null;
+    if (result.deductions && result.deductions.length) {
+      return 'Para recuperar estrelas, corrija: ' + result.deductions.map((d) => d.text.replace(/\.$/, '')).join('; ') + '.';
+    }
     const tech = techniqueOf(level);
     if (result.stars === 1 && tech) return `Para ganhar a 2ª estrela, tente resolver ${TECHNIQUE_LABEL[tech]}.`;
     return `Para ganhar a 3ª estrela, tente usar no máximo ${parOf(level)} comando(s). Você usou ${analysis.size}.`;
@@ -880,7 +937,7 @@
 
   const api = {
     LEVELS, FUTURE_LEVELS, targetOf, evaluate, nextStarTip, requirementLabel, similarity,
-    byId, techniqueOf, usesTechnique, parOf, TECHNIQUE_LABEL,
+    byId, techniqueOf, usesTechnique, parOf, TECHNIQUE_LABEL, maxStarsOf, realmOf, missingRequirements,
   };
   root.Levels = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
