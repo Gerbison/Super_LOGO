@@ -966,6 +966,8 @@
     levelWS.stage.setGhost(Levels.targetOf(level));
     // blocos PARA/REPCONT/SE/PARE no painel a partir do Reino 5
     levelWS.setAdvanced(custom || (onde && onde.reino.id >= 5) || /PARA|REPCONT/i.test(level.solution));
+    // meta de comandos e linhas, logo abaixo da tela da tartaruga
+    levelWS.setGoal(Levels.metaOf(level));
     // a partir do Reino 3 os blocos laterais são só consulta: o aluno digita no teclado
     levelWS.setInsertEnabled(custom || !onde || onde.reino.id < 3);
     requestAnimationFrame(() => renderTargetPreview(level));
@@ -1550,7 +1552,7 @@
                 <h4>${l.icon} ${Cultivo.numero(l.id)}. ${esc(l.title)} <small class="muted">· ${esc(Cultivo.ESTAGIOS[Cultivo.onde(l.id).estagio.tipo].curto)}</small></h4>
                 <p class="small">${esc(l.challenge)}</p>
                 <pre class="snippet small">${esc(l.solution)}</pre>
-                <p class="muted small">${Levels.maxStarsOf(l)} ★ com até ${Levels.parOf(l)} comandos${l.limit ? ` · 📏 limite ${l.limit}` : ''}${Cultivo.minEstrelas(l.id) ? ` · mín. ${Cultivo.minEstrelas(l.id)} ★ para romper` : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
+                <p class="muted small">🎯 Meta: ${Levels.metaOf(l).comandos} comandos em ${Levels.metaOf(l).linhas} linha${Levels.metaOf(l).linhas > 1 ? 's' : ''} · ${Levels.maxStarsOf(l)} ★ com até ${Levels.parOf(l)} comandos${l.limit ? ` · 📏 limite ${l.limit}` : ''}${Cultivo.minEstrelas(l.id) ? ` · mín. ${Cultivo.minEstrelas(l.id)} ★ para romper` : ''}${(l.requires || []).filter((r) => r !== 'PF').length ? ' · obrigatório: ' + l.requires.filter((r) => r !== 'PF').map(Levels.requirementLabel).join(', ') : ''}</p>
                 <details class="small"><summary>Dicas do nível</summary><ol>${l.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ol></details>
                 <div class="custom-actions">
                   <a class="btn btn-sm btn-primary" href="#/desafio/${l.id}/solucao">▶ Ver resolvendo</a>

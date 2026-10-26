@@ -95,6 +95,8 @@
           </div>
         </div>
 
+        <div class="ws-goal" hidden aria-live="polite"></div>
+
         <div class="panel editor-panel">
           <div class="panel-head">
             <label class="panel-title" for="code-${id}">${ICON.keyboard} Editor de Código</label>
@@ -116,7 +118,7 @@
                 placeholder="${esc(o.placeholder)}"></textarea>
             </div>
           </div>
-          <p class="editor-foot"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> executa · <kbd>Esc</kbd> para · clique num comando à direita para inseri-lo</p>
+          <p class="editor-foot"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> executa · <kbd>Esc</kbd> para<span class="foot-insert"> · clique num comando à direita para inseri-lo</span></p>
         </div>
 
         <div class="ws-bottom">
@@ -284,6 +286,7 @@
       this.textarea.addEventListener('input', () => {
         this.mark = null;
         this.renderEditor();
+        this.updateGoal();
         if (this.opts.storageKey) {
           clearTimeout(this.saveTimer);
           this.saveTimer = setTimeout(() => Store.setCode(this.opts.storageKey, this.textarea.value), 400);
@@ -323,6 +326,39 @@
       }
     }
 
+    /**
+     * Faixa abaixo da tela da tartaruga com a meta do desafio
+     * ({ comandos, linhas, nota }) e a contagem do código atual.
+     * null esconde a faixa (Modo Livre, galeria, tutorial).
+     */
+    setGoal(meta) {
+      this.goal = meta || null;
+      this.updateGoal();
+    }
+
+    updateGoal() {
+      const el = this.root && this.root.querySelector('.ws-goal');
+      if (!el) return;
+      const g = this.goal;
+      el.hidden = !g;
+      if (!g) return;
+      const code = this.textarea.value;
+      const linhas = Logo.countLines(code);
+      let comandos = null;
+      try { comandos = linhas ? Logo.analyze(Logo.parse(code)).size : 0; } catch (e) { comandos = null; }
+      const plural = (n, s, p) => `${n} ${n === 1 ? s : p}`;
+      const passou = comandos !== null && (comandos > g.comandos || linhas > g.linhas);
+      const estado = !linhas ? 'vazio' : comandos === null ? 'erro' : passou ? 'acima' : 'ok';
+      const seu = !linhas ? 'ainda vazio'
+        : comandos === null ? `${plural(linhas, 'linha', 'linhas')} (corrija o erro para contar os comandos)`
+          : `${plural(comandos, 'comando', 'comandos')} em ${plural(linhas, 'linha', 'linhas')}`;
+      el.className = 'ws-goal goal-' + estado;
+      el.innerHTML = `
+        <span class="goal-meta">🎯 <b>Meta:</b> até <b>${plural(g.comandos, 'comando', 'comandos')}</b> em <b>${plural(g.linhas, 'linha', 'linhas')}</b></span>
+        <span class="goal-seu">✍️ <b>Seu código:</b> ${seu}${estado === 'acima' ? ' — acima da meta' : estado === 'ok' ? ' ✓' : ''}</span>
+        ${g.nota ? `<span class="goal-nota">${esc(g.nota)}</span>` : ''}`;
+    }
+
     /** Mostra os blocos da linguagem avançada (PARA, REPCONT, SE, PARE). */
     setAdvanced(on) {
       this.root.classList.toggle('show-advanced', !!on);
@@ -359,6 +395,7 @@
       this.textarea.value = code || '';
       this.mark = null;
       this.renderEditor();
+      this.updateGoal();
       if (this.opts.storageKey) Store.setCode(this.opts.storageKey, this.textarea.value);
     }
 

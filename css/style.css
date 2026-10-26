@@ -865,3 +865,21 @@ dialog.breakthrough-modal { border-color: var(--yellow); box-shadow: 0 0 60px rg
 .ded-title { margin: 0 0 4px; font-weight: 800; }
 .ded-none { background: var(--ok-bg); border-color: rgba(34, 197, 94, 0.5); font-weight: 700; }
 .min-warning { margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-bg); border: 1px solid rgba(250, 204, 21, 0.5); }
+
+/* ---------------- Meta de comandos e linhas (abaixo da tela) ---------------- */
+.ws-goal {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
+  padding: 10px 16px; border-radius: 12px; font-size: 0.98rem;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.ws-goal b { color: #fff; }
+.goal-meta { color: #fde68a; }
+.goal-meta b { color: var(--yellow); }
+.goal-seu { color: var(--muted); }
+.goal-ok { border-color: var(--green); }
+.goal-ok .goal-seu { color: #86efac; }
+.goal-acima { border-color: #f59e0b; }
+.goal-acima .goal-seu { color: #fbbf24; font-weight: 700; }
+.goal-erro .goal-seu { color: #fca5a5; }
+.goal-nota { flex-basis: 100%; font-size: 0.85rem; color: var(--muted); }
+.no-insert .foot-insert { display: none; }

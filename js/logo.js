@@ -1110,12 +1110,19 @@
   }
 
   /** Palavra-chave da linguagem avançada? (usado para colorir o editor) */
+  /** Linhas com código (ignora linhas vazias e comentários com ; ou //). */
+  function countLines(src) {
+    return String(src || '').split('\n')
+      .map((l) => l.replace(/;.*$/, '').replace(/\/\/.*$/, '').trim())
+      .filter(Boolean).length;
+  }
+
   function isKeyword(word) {
     return KEYWORDS.has(normalizeWord(word));
   }
 
   const Logo = {
-    tokenize, parse, run, analyze, compile, defineCommand, lookup, normalizeWord, isKeyword,
+    tokenize, parse, run, analyze, compile, defineCommand, lookup, normalizeWord, isKeyword, countLines,
     commands, KEYWORD_DOCS, FUTURE_WORDS, LogoError, MAX_ACTIONS, MAX_REPEAT, MAX_DEPTH,
   };
 

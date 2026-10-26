@@ -565,6 +565,25 @@ test('código TAR3 leva os 36 desafios (até 5 estrelas) e as 10 aulas', () => {
   assert.ok(novo.lessons[10]);
 });
 
+/* ----------------- meta de comandos e linhas (abaixo da tela) ----------------- */
+test('countLines ignora linhas vazias e comentários', () => {
+  assert.strictEqual(Logo.countLines('PF 10\n\n; comentário\nPD 90 // gira\n   '), 2);
+});
+test('todos os 36 desafios têm meta de comandos e linhas coerente com a solução', () => {
+  Levels.LEVELS.forEach((l) => {
+    const m = Levels.metaOf(l);
+    const ref = l.solucaoOtima || l.solution;
+    assert.ok(m.comandos >= 1 && m.linhas >= 1, 'id ' + l.id);
+    assert.ok(Logo.compile(ref).analysis.size <= m.comandos, 'comandos id ' + l.id);
+    assert.strictEqual(Logo.countLines(ref), m.linhas, 'linhas id ' + l.id);
+    assert.ok(play(l, ref).completed, 'a solução de referência passa: id ' + l.id);
+  });
+});
+test('desafio 7 (quadrado com REPITA): 3 comandos em 1 linha', () => {
+  const m = Levels.metaOf(Cultivo.orderedLevels()[6]);
+  assert.deepStrictEqual([m.comandos, m.linhas], [3, 1]);
+});
+
 /* ------------------------------- Fractais ------------------------------- */
 test('Laboratório de Fractais: curva de Koch gera 4^n segmentos', () => {
   const s = Turtle.simulate(Fractals.kochActions(243, 3), Turtle.createState());

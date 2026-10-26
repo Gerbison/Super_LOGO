@@ -332,7 +332,12 @@
     1: { title: 'O Despertar', shape: 'Linha reta', lore: 'A tartaruga espiritual abre os olhos. Todo caminho começa com um único traço.' },
     2: { title: 'O Passo de Retorno', shape: 'Ida e volta', lore: 'O cultivador que sabe avançar também sabe voltar à origem.' },
     3: { title: 'O Primeiro Giro do Qi', shape: 'Ângulo reto', lore: 'A energia muda de direção: o primeiro giro desperta o Qi.' },
-    4: { title: 'O Selo Quadrado', shape: 'Quadrado', lore: 'Quatro lados, quatro cantos: o primeiro selo do Reino Mundano.' },
+    4: {
+      title: 'O Selo Quadrado', shape: 'Quadrado', lore: 'Quatro lados, quatro cantos: o primeiro selo do Reino Mundano.',
+      // sem REPITA (ainda não ensinado) são 8 comandos em 8 linhas; a meta de ⭐⭐⭐ usa REPITA
+      solucaoOtima: 'REPITA 4 [PF 100 PD 90]',
+      metaNota: 'Sem REPITA: 8 comandos em 8 linhas (vale ⭐⭐).',
+    },
     5: { title: 'O Ciclo dos Quatro Ventos', shape: 'Quadrado com REPITA', lore: 'Os quatro ventos sopram em ciclo — o que se repete pode ser dito uma só vez.' },
     6: { title: 'O Portão Retangular', shape: 'Retângulo', lore: 'O portão do templo tem lados desiguais, mas o padrão ainda se repete.' },
     7: { title: 'A Tríade Harmônica', shape: 'Triângulo', lore: 'Três lados em harmonia: a volta completa dividida por três.' },
@@ -759,6 +764,17 @@
   }
 
   /** Meta de comandos para ⭐⭐⭐ (se não informada, vale o tamanho da solução). */
+  /**
+   * Meta mostrada abaixo da tela da tartaruga: no máximo quantos comandos e
+   * quantas linhas são precisos para concluir o desafio com a nota máxima.
+   * Vem da solução de referência (ou de solucaoOtima, quando a solução
+   * mostrada não é a mais curta).
+   */
+  function metaOf(level) {
+    const ref = level.solucaoOtima || level.solution;
+    return { comandos: parOf(level), linhas: root.Logo.countLines(ref), nota: level.metaNota || '' };
+  }
+
   function parOf(level) {
     if (level.par) return level.par;
     targetOf(level);
@@ -937,7 +953,7 @@
 
   const api = {
     LEVELS, FUTURE_LEVELS, targetOf, evaluate, nextStarTip, requirementLabel, similarity,
-    byId, techniqueOf, usesTechnique, parOf, TECHNIQUE_LABEL, maxStarsOf, realmOf, missingRequirements,
+    byId, techniqueOf, usesTechnique, parOf, metaOf, TECHNIQUE_LABEL, maxStarsOf, realmOf, missingRequirements,
   };
   root.Levels = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
