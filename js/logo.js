@@ -1099,6 +1099,7 @@
       usesRepeat: repeats > 0, nestedRepeat: maxDepth > 1,
       usesProcedures: procCount > 0, procedureCount: procCount, recursive, usesRepcount,
       techniques: used,
+      lines: countLines(program.source), // linhas com código (meta de linhas)
     };
   }
 

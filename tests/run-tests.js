@@ -471,11 +471,12 @@ test('desafio 25 sem REPCONT e 26 sem PARA passam com desconto', () => {
   assert.ok(r26.completed && r26.deductions.some((d) => /PARA/.test(d.text)));
   assert.ok(r26.stars < 5);
 });
-test('desafio 27 sem REPCONT e com 144 comandos: 2 de 5 estrelas', () => {
+test('desafio 27 sem REPCONT, 144 comandos em 72 linhas: 1 de 5 estrelas', () => {
   const longa = Array.from({ length: 72 }, (_, i) => `PF ${(i + 1) / 2} PD 15`).join('\n');
   const res = play(Levels.byId(27), longa);
   assert.ok(res.completed, res.text);
-  assert.strictEqual(res.stars, 2);
+  assert.strictEqual(res.stars, 1);
+  assert.ok(res.deductions.some((d) => d.key === 'linhas'));
   assert.strictEqual(play(Levels.byId(27), 'REPITA 72 [PF REPCONT / 2 PD 15]').stars, 5);
 });
 test('traço repetido por cima do tracejado: passa no Reino 3+, reprova no Reino 2', () => {
@@ -582,6 +583,21 @@ test('todos os 36 desafios têm meta de comandos e linhas coerente com a soluç�
 test('desafio 7 (quadrado com REPITA): 3 comandos em 1 linha', () => {
   const m = Levels.metaOf(Cultivo.orderedLevels()[6]);
   assert.deepStrictEqual([m.comandos, m.linhas], [3, 1]);
+});
+
+test('linhas acima da meta: −1 ★ no Reino 3+, sem a 3ª estrela nos Reinos 1-2', () => {
+  // Desafio 20 (id 14, meta 5 comandos em 1 linha) com os mesmos comandos em 3 linhas
+  const r = play(Levels.byId(14), 'REPITA 6 [\n  REPITA 3 [PF 80 PD 120] PD 60\n]');
+  assert.ok(r.completed);
+  assert.deepStrictEqual(r.deductions.map((d) => d.key), ['linhas']);
+  assert.strictEqual(r.stars, 4);
+  // Desafio 7 (id 5, meta 3 comandos em 1 linha) com REPITA em 3 linhas
+  const tres = 'REPITA 4 [\n  PF 150 PD 90\n]';
+  const q = play(Levels.byId(5), tres);
+  assert.ok(q.completed);
+  assert.strictEqual(q.stars, 2);
+  assert.match(Levels.nextStarTip(Levels.byId(5), q, Logo.compile(tres).analysis), /1 linha/);
+  assert.strictEqual(play(Levels.byId(5), 'REPITA 4 [PF 150 PD 90]').stars, 3);
 });
 
 /* ------------------------------- Fractais ------------------------------- */

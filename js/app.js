@@ -779,8 +779,8 @@
           <div class="card legend">
             <h3>Como ganhar estrelas</h3>
             <ul>
-              <li><b>Reinos 1 e 2 (3 ★):</b> <span class="stars">★</span> desenho correto · <span class="stars">★★</span> com a técnica · <span class="stars">★★★</span> código eficiente</li>
-              <li><b>Reino 3 em diante (5 ★):</b> desenho certo vale passar; você começa com <span class="stars">★★★★★</span> e perde 1 ★ por: não usar a técnica pedida, passar da meta de comandos (2 se passar do dobro), passar do limite, repetir linhas por cima do tracejado ou usar todas as dicas.</li>
+              <li><b>Reinos 1 e 2 (3 ★):</b> <span class="stars">★</span> desenho correto · <span class="stars">★★</span> com a técnica · <span class="stars">★★★</span> dentro da meta de comandos e linhas</li>
+              <li><b>Reino 3 em diante (5 ★):</b> desenho certo vale passar; você começa com <span class="stars">★★★★★</span> e perde 1 ★ por: não usar a técnica pedida, passar da meta de comandos (2 se passar do dobro), passar da meta de linhas, passar do limite, repetir linhas por cima do tracejado ou usar todas as dicas.</li>
             </ul>
             <p class="muted">⛰️ Para romper os Reinos 3 a 5: pelo menos 3 ★ em cada desafio. Reino 6: pelo menos 4 ★.</p>
           </div>
@@ -892,12 +892,13 @@
           <li>★★★★★ desenho certo${tech ? ', ' + esc(Levels.TECHNIQUE_LABEL[tech]) : ''}, com até ${par} comandos</li>
           ${tech || reqs.length ? '<li>−1 ★ não usar a técnica pedida</li>' : ''}
           <li>−1 ★ passar da meta de comandos (−2 se passar do dobro)</li>
+          <li>−1 ★ passar da meta de linhas</li>
           ${level.limit ? `<li>−1 ★ passar do limite de ${level.limit} comandos</li>` : ''}
           <li>−1 ★ repetir linhas por cima do tracejado</li>
           <li>−1 ★ usar todas as dicas</li>` : `
           <li>★ desenho correto</li>
           <li>★★ ${tech ? Levels.TECHNIQUE_LABEL[tech] : 'sem comandos sobrando'}</li>
-          <li>★★★ até ${par} comando${par > 1 ? 's' : ''}</li>`}
+          <li>★★★ até ${par} comando${par > 1 ? 's' : ''} em ${Levels.metaOf(level).linhas} linha${Levels.metaOf(level).linhas > 1 ? 's' : ''}</li>`}
         </ul>
       </section>
 
@@ -908,7 +909,7 @@
           <ul class="criteria">${flex ? `
             <li data-key="desenho"><span class="ck" aria-hidden="true"></span> Desenho correto</li>
             <li data-key="tecnica"><span class="ck" aria-hidden="true"></span> ${tech ? crit2 : 'Técnica pedida'}</li>
-            <li data-key="meta"><span class="ck" aria-hidden="true"></span> Dentro da meta${level.limit ? ' e do limite' : ''}</li>
+            <li data-key="meta"><span class="ck" aria-hidden="true"></span> Dentro da meta de comandos e linhas${level.limit ? ' e do limite' : ''}</li>
             <li data-key="repetidas"><span class="ck" aria-hidden="true"></span> Sem linhas repetidas</li>
             <li data-key="dicas"><span class="ck" aria-hidden="true"></span> Sem usar todas as dicas</li>` : `
             <li data-crit="1"><span class="ck" aria-hidden="true"></span> Desenho correto</li>
@@ -998,7 +999,7 @@
       ? `Sua melhor marca: ${best} de ${maxS} estrelas.${minS && best < minS ? ` Para romper o reino, precisa de ${minS}.` : best < maxS ? ' Dá para melhorar!' : ' Perfeito!'}`
       : 'Conclua o desafio para ganhar suas estrelas!';
     if (maxS === 5) {
-      const keys = result && result.deductions ? result.deductions.map((d) => (d.key === 'meta2' || d.key === 'limite' ? 'meta' : d.key)) : null;
+      const keys = result && result.deductions ? result.deductions.map((d) => (['meta2', 'limite', 'linhas'].includes(d.key) ? 'meta' : d.key)) : null;
       $$('.criteria li', view).forEach((li) => {
         const k = li.dataset.key;
         let ok;
@@ -1568,7 +1569,7 @@
         <p>O aluno aprende lógica de programação construindo desenhos: <b>escreve → executa → observa → identifica o erro → corrige</b>.
         A progressão vai de comandos simples (sequência) a ângulos, repetição (loop), laços aninhados, decomposição e engenharia reversa.</p>
         <p class="flow">APRENDER → EXPERIMENTAR → RESOLVER DESAFIOS → ROMPER REINOS → CRIAR → PROGRAMAR LIVREMENTE</p>
-        <p><b>Estrelas:</b> Reinos 1 e 2 usam 3 estrelas. A partir do Reino 3, são 5: o desafio passa sempre que o desenho estiver certo, e cada regra não cumprida tira 1 estrela (técnica, meta de comandos — 2 se passar do dobro —, limite, linhas repetidas por cima do tracejado, uso de todas as dicas). Para romper os Reinos 3 a 5, todos os desafios precisam de pelo menos 3 estrelas; no Reino 6, de 4. A partir do Reino 3 os blocos de comandos da lateral não inserem código: o aluno digita.</p>
+        <p><b>Estrelas:</b> Reinos 1 e 2 usam 3 estrelas. A partir do Reino 3, são 5: o desafio passa sempre que o desenho estiver certo, e cada regra não cumprida tira 1 estrela (técnica, meta de comandos — 2 se passar do dobro —, meta de linhas, limite, linhas repetidas por cima do tracejado, uso de todas as dicas). Para romper os Reinos 3 a 5, todos os desafios precisam de pelo menos 3 estrelas; no Reino 6, de 4. A partir do Reino 3 os blocos de comandos da lateral não inserem código: o aluno digita.</p>
         <p><b>O Dao dos Algoritmos:</b> 36 desafios em 6 reinos × 3 estágios (Inicial, Intermediário, Pico). Um estágio abre quando o anterior é concluído; vencer o Pico rompe o reino. Reino 1: sequência e precisão · Reino 2: REPITA e polígonos · Reino 3: laços aninhados · Reino 4: otimização com limite de comandos · Reino 5: REPCONT, procedimentos e a primeira recursão · Reino 6: fractais e recursão avançada.</p>
         <p class="muted">A verificação dos desafios compara o <b>desenho</b>, não o código: soluções diferentes são aceitas. Desenhos espelhados (PE em vez de PD), girados em 90° ou deslocados também valem.</p>
       </section>

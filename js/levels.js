@@ -893,6 +893,10 @@
         deductions.push({ key: 'meta', stars: 1, text: `Código maior que a meta: ${analysis.size} comandos (meta: até ${par}).` });
         if (analysis.size > par * 2) deductions.push({ key: 'meta2', stars: 1, text: `Código com mais que o dobro da meta (${par * 2}).` });
       }
+      const metaLinhas = metaOf(level).linhas;
+      if (analysis.lines > metaLinhas) {
+        deductions.push({ key: 'linhas', stars: 1, text: `Linhas demais: ${analysis.lines} linhas (meta: até ${metaLinhas}). Ingredientes desperdiçados no cultivo!` });
+      }
       if (level.limit && analysis.size > level.limit) {
         deductions.push({ key: 'limite', stars: 1, text: `Passou do limite permitido: ${analysis.size} comandos (limite: ${level.limit}).` });
       }
@@ -936,7 +940,8 @@
 
     let stars = 1;
     if (usesTechnique(analysis, techniqueOf(level))) stars = 2;
-    if (stars === 2 && analysis.size <= par) stars = 3;
+    // 3ª estrela: dentro da meta de comandos E de linhas
+    if (stars === 2 && analysis.size <= par && analysis.lines <= metaOf(level).linhas) stars = 3;
     return { completed: true, stars, maxStars, title: 'Muito bem!', text: level.success, compare: cmp, efficiency, deductions: null };
   }
 
@@ -948,7 +953,8 @@
     }
     const tech = techniqueOf(level);
     if (result.stars === 1 && tech) return `Para ganhar a 2ª estrela, tente resolver ${TECHNIQUE_LABEL[tech]}.`;
-    return `Para ganhar a 3ª estrela, tente usar no máximo ${parOf(level)} comando(s). Você usou ${analysis.size}.`;
+    const m = metaOf(level);
+    return `Para ganhar a 3ª estrela, use no máximo ${m.comandos} comando(s) em ${m.linhas} linha(s). Você usou ${analysis.size} comando(s) em ${analysis.lines} linha(s).`;
   }
 
   const api = {
