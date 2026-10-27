@@ -21,7 +21,7 @@ Ambiente educacional **gratuito**, que roda **direto no navegador**, para ensina
 | 📘 **Aprender** | Tutorial "Aprenda a falar com a Tartaruga" em 10 aulas: PF, PT, PD/PE (com demonstração de 90°/180°/270°/360°), caneta, limpar, REPITA com cada volta colorida e o conceito de LOOP; e os pergaminhos avançados REPCONT, PARA … FIM e recursão (SE/PARE). |
 | ☯️ **Desafios** | **O Dao dos Algoritmos:** 36 desafios em 6 reinos de cultivo × 3 estágios (Inicial, Intermediário e Pico), desenho-alvo, verificação automática pelo **resultado** (não pelo código), 3 dicas por desafio, estrelas, barra de Qi e **Rompimento de Reino**. |
 | 🎨 **Modo Livre** | Canvas grande, cores, espessura, caneta, centro, desfazer/refazer, zoom, salvar desenhos, exportar PNG e baixar o código (.txt). |
-| 🖼️ **Galeria** | 15 exemplos (quadrado, triângulo, estrela, círculo, casa, sol, flor, espiral, floco, padrões, árvore fractal, Koch...) para ver, executar e editar. |
+| 🖼️ **Galeria** | 15 exemplos (quadrado, triângulo, estrela, círculo, casa, sol, flor, espiral, floco, padrões, árvore fractal, Koch...) — o aluno vê só o desenho (tracejado) e tenta reproduzi-lo com o próprio código; o código dos exemplos não é mostrado. |
 | 📚 **Comandos** | Biblioteca visual com um cartão por comando. |
 | 🏅 **Conquistas** | 18 badges com o tema de cultivo (O Primeiro Sopro, Laço dentro do Laço, Espelho Infinito, um Rompimento por reino, Iluminado do Dao...). |
 | 👨‍🏫 **Professor** | Com senha: todas as fases e soluções por reino, objetivos pedagógicos, sugestões para a sala, Desafios do Professor, **criador de desafios por link**, desbloquear tudo, imprimir. |

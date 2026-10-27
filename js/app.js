@@ -9,7 +9,7 @@
 (function () {
   'use strict';
 
-  const { Logo, Turtle, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals, Progresso, Cultivo } = window;
+  const { Logo, Turtle, Checker, Levels, Store, Achievements, Workspace, TUTORIAL, EXAMPLES, Fractals, Progresso, Cultivo } = window;
   const LEVELS = Levels.LEVELS;              // por id (progresso e código TAR2)
   const JORNADA = Cultivo.orderedLevels();   // na ordem dos reinos (o que o aluno vê)
   const esc = Workspace.esc;
@@ -1338,7 +1338,7 @@
       view.innerHTML = `
         <div class="page-head">
           <h2>🖼️ O que posso criar?</h2>
-          <p>Clique num exemplo para ver o desenho, ler o código, executar e editar.</p>
+          <p>Clique num exemplo: o desenho aparece tracejado no mundo da tartaruga. O desafio é <b>descobrir o código</b> e reproduzi-lo com as suas próprias mãos.</p>
         </div>
         <div class="gallery-grid">
           ${EXAMPLES.map((ex) => `
@@ -1353,14 +1353,17 @@
             <h3 id="gallery-detail-title"></h3>
             <p class="detail-text muted"></p>
             <div class="detail-actions">
-              <button type="button" class="btn btn-sm" data-free>🎨 Abrir no Modo Livre</button>
-              <button type="button" class="btn btn-sm btn-ghost" data-restore>↺ Código original</button>
+              <button type="button" class="btn btn-sm" data-free>🎨 Levar meu código para o Modo Livre</button>
             </div>
           </div>
           <div class="gallery-ws"></div>
         </section>`;
       galleryWS = new Workspace($('.gallery-ws', view), {
-        onFinish: (compiled) => fireEvent('run', { analysis: compiled.analysis }),
+        placeholder: 'Escreva aqui o seu código para reproduzir o desenho tracejado...',
+        onFinish: (compiled, state) => {
+          fireEvent('run', { analysis: compiled.analysis });
+          checkGalleryDrawing(state);
+        },
         saveLabel: 'Para guardar seus desenhos, use o Modo Livre.',
         onSave: (ws) => openInFree(ws.code),
       });
@@ -1370,10 +1373,6 @@
         if (card) openExample(card.dataset.example);
       });
       $('[data-free]', view).addEventListener('click', () => openInFree(galleryWS.code));
-      $('[data-restore]', view).addEventListener('click', () => {
-        const ex = EXAMPLES.find((x) => x.id === view.dataset.example);
-        if (ex) { galleryWS.setCode(ex.code); galleryWS.run(); }
-      });
     }
     requestAnimationFrame(renderGalleryThumbs);
   }
@@ -1386,6 +1385,27 @@
     });
   }
 
+  /** Desenho de um exemplo da galeria (o código fica escondido: só o resultado aparece). */
+  function exampleTarget(ex) {
+    if (!ex._target) ex._target = Turtle.simulate(Logo.compile(ex.code).actions, Turtle.createState()).segments;
+    return ex._target;
+  }
+
+  /** Confere se o aluno reproduziu o desenho do exemplo (sem estrelas). */
+  function checkGalleryDrawing(state) {
+    const ex = EXAMPLES.find((x) => x.id === $('#view-galeria').dataset.example);
+    if (!ex || !state.segments.length) return;
+    const cmp = Checker.compare(state.segments, exampleTarget(ex), { mode: 'shape', tolerance: 5, allowOverdraw: true });
+    if (cmp.ok) {
+      galleryWS.showMessage(`<p class="msg-title">🎉 Você reproduziu “${esc(ex.title)}” com o seu próprio código!</p>`, 'success');
+    } else {
+      const sim = Math.round(Levels.similarity(cmp) * 100);
+      galleryWS.showMessage(`<p class="msg-title">🤏 Ainda diferente do tracejado.</p>
+        <p class="similarity"><span class="meter"><i style="width:${sim}%"></i></span> Seu desenho combina ${sim}% com o exemplo.</p>
+        <p class="muted">Observe o tracejado: quantos lados? Que ângulo? O que se repete?</p>`, 'warn');
+    }
+  }
+
   function openExample(id) {
     const view = $('#view-galeria');
     const ex = EXAMPLES.find((x) => x.id === id);
@@ -1394,10 +1414,13 @@
     detail.hidden = false;
     $('#gallery-detail-title').textContent = `${ex.icon} ${ex.title}`;
     $('.detail-text', view).textContent = ex.text;
-    galleryWS.setCode(ex.code);
+    // o código do exemplo NÃO vai para o editor: o aluno escreve o dele (guardado por exemplo)
+    galleryWS.opts.storageKey = 'galeria-' + id;
+    galleryWS.setCode(Store.code('galeria-' + id, ''));
     galleryWS.resetWorld();
+    galleryWS.stage.setGhost(exampleTarget(ex));
     detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => { galleryWS.stage.resize(); galleryWS.zoomFitCode(); galleryWS.run(); }, 300);
+    setTimeout(() => { galleryWS.stage.resize(); galleryWS.fitSegments(exampleTarget(ex), 260); }, 300);
     if (!Store.data.galleryRuns.includes(id)) { Store.data.galleryRuns.push(id); Store.save(); }
     fireEvent('gallery');
   }

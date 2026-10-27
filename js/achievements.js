@@ -35,7 +35,7 @@
     { id: 'repeticao', icon: '🔁', title: 'Laço dentro do Laço', how: 'Execute um programa com um REPITA dentro de outro REPITA.', test: (e, d) => e === 'run' && d.analysis.nestedRepeat },
     { id: 'persistente', icon: '💪', title: 'Coração Persistente', how: 'Conclua um desafio depois de errar pelo menos uma vez.', test: (e, d) => e === 'levelComplete' && d.hadErrors },
     { id: 'pensador', icon: '🧠', title: 'Mente Refinada', how: 'Ganhe 3 estrelas em 5 desafios.', test: (e, d, data) => Object.values(data.levels).filter((l) => l.stars >= 3).length >= 5 },
-    { id: 'explorador', icon: '🧭', title: 'Andarilho das Galerias', how: 'Execute 5 exemplos diferentes da galeria.', test: (e, d, data) => data.galleryRuns.length >= 5 },
+    { id: 'explorador', icon: '🧭', title: 'Andarilho das Galerias', how: 'Abra 5 exemplos diferentes da galeria.', test: (e, d, data) => data.galleryRuns.length >= 5 },
     { id: 'artista', icon: '🎨', title: 'Pincel do Dao', how: 'Salve ou compartilhe um desenho no Modo Livre.', test: (e) => e === 'art' },
     { id: 'tecnica', icon: '📜', title: 'Técnica Nomeada', how: 'Execute um programa que cria um comando com PARA … FIM.', test: (e, d) => e === 'run' && d.analysis.usesProcedures },
     { id: 'recursao', icon: '🌀', title: 'Espelho Infinito', how: 'Execute um programa com recursão (um comando que chama a si mesmo).', test: (e, d) => e === 'run' && d.analysis.recursive },
