@@ -225,7 +225,7 @@ function dados(nome, levels, lessons) {
 test('código de progresso: ida e volta em outro computador', () => {
   const origem = dados('Luíza', { 1: { completed: true, stars: 3 }, 2: { completed: true, stars: 1 }, 15: { completed: true, stars: 2 } }, { 1: true, 7: true });
   const codigo = Progresso.gerarCodigo(origem, L, TUTORIAL);
-  assert.match(codigo, /^TAR3-[0-9A-Z]{24}-[0-9A-Z]{4}$/);
+  assert.match(codigo, /^TAR3-[0-9A-Z]{31}-[0-9A-Z]{4}$/);
   const novo = dados('');
   const r = Progresso.importar(novo, codigo, 'Luiza', L, TUTORIAL); // sem acento também vale
   assert.ok(r.ok, r.motivo);
@@ -598,6 +598,36 @@ test('linhas acima da meta: −1 ★ no Reino 3+, sem a 3ª estrela nos Reinos 1
   assert.strictEqual(q.stars, 2);
   assert.match(Levels.nextStarTip(Levels.byId(5), q, Logo.compile(tres).analysis), /1 linha/);
   assert.strictEqual(play(Levels.byId(5), 'REPITA 4 [PF 150 PD 90]').stars, 3);
+});
+
+/* ------------- dicas: não zeram ao recarregar nem ao trocar de computador ------------- */
+test('dicas abertas ficam guardadas (Store) e só aumentam', () => {
+  const Store = require('../js/storage.js');
+  Store.data = { hints: {} };
+  Store.setHintsUsed(20, 2);
+  Store.setHintsUsed(20, 1);
+  assert.strictEqual(Store.hintsUsed(20), 2);
+  Store.setHintsUsed(20, 3);
+  assert.strictEqual(Store.hintsUsed(20), 3);
+  assert.strictEqual(Store.hintsUsed(21), 0);
+});
+test('código de progresso leva quem usou todas as dicas', () => {
+  const origem = dados('Eva', { 19: { completed: true, stars: 4 } });
+  origem.hints = { 20: 3, 21: 1 };
+  const c = Progresso.gerarCodigo(origem, L, TUTORIAL);
+  const novo = dados('');
+  assert.ok(Progresso.importar(novo, c, 'Eva', L, TUTORIAL).ok);
+  assert.strictEqual(novo.hints[20], 3, 'todas as dicas usadas viajam no código');
+  assert.ok(!novo.hints[21], 'dicas parciais não contam (não tiram estrela)');
+});
+test('TAR3 antigo (sem a parte das dicas) continua sendo lido', () => {
+  const origem = dados('Eva', { 19: { completed: true, stars: 4 } });
+  const [pref, corpo, ass] = Progresso.gerarCodigo(origem, L, TUTORIAL).split('-');
+  const antigo = [pref, corpo.slice(0, 24), ass].join('-');
+  const novo = dados('');
+  const r = Progresso.importar(novo, antigo, 'Eva', L, TUTORIAL);
+  assert.ok(r.ok, r.motivo);
+  assert.strictEqual(novo.levels[19].stars, 4);
 });
 
 /* ------------------------------- Fractais ------------------------------- */

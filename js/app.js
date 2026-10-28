@@ -939,7 +939,10 @@
 
     // o painel lê o desafio aberto e a sessão: defina-os antes de atualizar
     activeLevel = level;
-    levelSession = { hints: 0, hadErrors: false, level, custom };
+    // dicas já abertas antes (inclusive antes de recarregar a página) continuam valendo
+    const dicasUsadas = custom || isAdmin() ? 0 : Math.min(Store.hintsUsed(level.id), level.hints.length);
+    levelSession = { hints: dicasUsadas, hadErrors: false, level, custom };
+    $('.hints', info).innerHTML = level.hints.slice(0, dicasUsadas).map((h) => `<li>${esc(h)}</li>`).join('');
     updateLevelPanel(res.completed ? res.stars : 0, 'best');
     updateHintButton();
     $('[data-hint]', info).addEventListener('click', showHint);
@@ -1046,6 +1049,7 @@
     li.textContent = s.level.hints[s.hints];
     $('#view-desafio .hints').appendChild(li);
     s.hints++;
+    if (!s.custom && !isAdmin()) Store.setHintsUsed(s.level.id, s.hints);
     updateHintButton();
   }
 

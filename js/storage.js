@@ -22,6 +22,7 @@
       codes: {},         // último código de cada lugar (nível, aula, modo livre)
       drawings: [],      // desenhos do modo livre: { id, name, code, thumb, date }
       galleryRuns: [],   // ids dos exemplos executados
+      hints: {},         // { [id]: quantas dicas o aluno já abriu } — não zera ao recarregar a página
       unlockAll: false,  // Modo Professor: liberar todos os níveis
       cultivo: {         // O Dao dos Algoritmos (js/cultivo.js)
         rompimentos: {}, // { [reinoId]: data ISO do Rompimento de Reino }
@@ -89,6 +90,18 @@
         size: prev.size ? Math.min(prev.size, size) : size,
       };
       if (escala5) this.data.levels[id].escala = 5; // estrelas de 0 a 5 (Reino 3 em diante)
+      this.save();
+    },
+
+    /** Dicas já abertas no desafio (persistem: recarregar a página não as esconde). */
+    hintsUsed(id) {
+      return (this.data.hints && this.data.hints[id]) || 0;
+    },
+
+    /** Registra que o aluno abriu dicas no desafio (guarda sempre o maior número). */
+    setHintsUsed(id, n) {
+      this.data.hints = this.data.hints || {};
+      this.data.hints[id] = Math.max(this.hintsUsed(id), n);
       this.save();
     },
 

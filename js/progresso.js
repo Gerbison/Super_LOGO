@@ -87,6 +87,13 @@
       bits += e.toString(2).padStart(largura, '0');
     });
     porId(lessons).forEach((a) => { bits += data.lessons[a.id] ? '1' : '0'; });
+    if (!antigo) {
+      // 1 bit por desafio: usou todas as dicas? (o desconto acompanha o aluno em outro computador)
+      porId(levels).forEach((l) => {
+        const usadas = (data.hints && data.hints[l.id]) || 0;
+        bits += l.hints && l.hints.length && usadas >= l.hints.length ? '1' : '0';
+      });
+    }
     const prefixo = versao === 1 ? PREFIXO_V1 : versao === 2 ? PREFIXO_V2 : PREFIXO;
     return `${prefixo}-${bitsParaBase32(bits)}-${assinatura(data.nome)}`;
   }
@@ -128,7 +135,13 @@
       estrelas[id] = versao === 3 ? e : converter(id, e);
     });
     lessonIds.forEach((id, i) => { aulas[id] = bits[levelIds.length * largura + i] === '1'; });
-    return { valido: true, versao, estrelas, aulas, assinatura: partes[2] };
+    // TAR3 mais novo: depois das aulas, 1 bit por desafio = usou todas as dicas
+    const dicas = {};
+    const inicioDicas = levelIds.length * largura + lessonIds.length;
+    if (versao === 3 && bits.length >= inicioDicas + levelIds.length) {
+      levelIds.forEach((id, i) => { dicas[id] = bits[inicioDicas + i] === '1'; });
+    }
+    return { valido: true, versao, estrelas, aulas, dicas, assinatura: partes[2] };
   }
 
   function conferirNome(codigo, nome, levels, lessons) {
@@ -165,6 +178,12 @@
     });
     lessons.forEach((a) => {
       if (lido.aulas[a.id] && !data.lessons[a.id]) { data.lessons[a.id] = true; aulas++; }
+    });
+    levels.forEach((l) => {
+      if (lido.dicas && lido.dicas[l.id] && l.hints) {
+        data.hints = data.hints || {};
+        data.hints[l.id] = Math.max(data.hints[l.id] || 0, l.hints.length);
+      }
     });
     data.nome = nome;
     return { ok: true, niveis, aulas, versao: lido.versao };
