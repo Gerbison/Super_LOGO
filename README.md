@@ -77,6 +77,21 @@ Mesmo sistema do AlgoBot, **sem banco de dados**:
 
 Detalhes em `js/progresso.js`: 2 bits de estrelas por nível + 1 bit por aula, em base32 sem I/L/O/U, + hash FNV-1a do nome.
 
+## 📤 Terminar e Entregar (relatório em PDF)
+
+No fim da aba **Desafios** há o botão **📤 Terminar e Entregar**. Ele mostra um resumo e,
+ao clicar em **Gerar PDF e salvar**, baixa um arquivo para a pasta **Downloads** com o nome
+`Jornada-Tartaruga_<Nome-do-Aluno>_<data>.pdf`. O PDF contém:
+
+- **nome do aluno** (o mesmo digitado no jogo);
+- **fase alcançada** — o desafio mais avançado concluído, com reino e estágio;
+- **total de estrelas** (e o máximo possível) e quantos desafios foram concluídos;
+- o **código de progresso**, para o professor conferir se quiser;
+- o **desenho de cada desafio CONCLUÍDO**, com as estrelas ganhas em cada um.
+
+O PDF é montado no próprio navegador (`js/relatorio.js`), sem internet e sem servidor.
+O aluno pode entregar quantas vezes quiser; cada arquivo mostra o progresso daquele momento.
+
 ## Acesso do professor (senha)
 
 A aba **👨‍🏫 Professor** pede senha. Depois de entrar (vale até fechar a aba do navegador):
@@ -136,6 +151,7 @@ js/examples.js        exemplos da galeria
 js/achievements.js    conquistas
 js/storage.js         salvamento no localStorage
 js/progresso.js       código de progresso (continuar em outro computador)
+js/relatorio.js       relatório em PDF do botão "Terminar e Entregar"
 js/workspace.js       componente Canvas + editor + botões (reutilizado em todas as telas)
 js/app.js             telas, navegação, modais, Modo Professor
 assets/               ícone

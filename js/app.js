@@ -321,7 +321,8 @@
 
   function setStatus(el, text, isError) {
     el.textContent = text;
-    el.className = 'form-status ' + (isError ? 'is-error' : 'is-ok');
+    el.classList.remove('is-error', 'is-ok');
+    el.classList.add('form-status', isError ? 'is-error' : 'is-ok');
   }
 
   /** Traz o progresso de um código para este computador (nunca piora nada). */
@@ -789,8 +790,19 @@
             <p class="muted">Cada reino tem 3 estágios: 🌱 Inicial, 🌿 Intermediário e ⛰️ Pico. O Pico só abre depois do Intermediário — e vencê-lo provoca o <b>Rompimento de Reino</b>.</p>
           </div>
         </aside>
-      </div>`;
+      </div>
+
+      <section class="card entrega" aria-labelledby="entrega-title">
+        <div class="entrega-texto">
+          <h3 id="entrega-title">📤 Terminar e Entregar</h3>
+          <p>Gera um <b>PDF</b> com o seu nome, a fase que você alcançou, o total de estrelas e o desenho de cada desafio concluído.
+          O arquivo é salvo na pasta <b>Downloads</b> do computador. Depois, envie-o para o professor do jeito combinado em aula.</p>
+          <p class="muted small">Pode entregar quantas vezes quiser: cada PDF mostra o progresso daquele momento.</p>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" data-entregar>📤 Terminar e Entregar</button>
+      </section>`;
     $('#view-desafios [data-open-code]').addEventListener('click', openCodeModal);
+    $('#view-desafios [data-entregar]').addEventListener('click', abrirEntrega);
   }
 
   /* ===================================================================== *
@@ -1256,6 +1268,62 @@
       pendingFree = null;
       freeWS.setCode(code);
       requestAnimationFrame(() => { freeWS.stage.resize(); freeWS.run(); });
+    }
+  }
+
+  /* ===================================================================== *
+   *  TERMINAR E ENTREGAR — relatório em PDF para o professor
+   * ===================================================================== */
+  function abrirEntrega() {
+    if (!Store.data.nome) {
+      toast('Antes de entregar, digite o seu nome.');
+      askName();
+      return;
+    }
+    const d = Relatorio.dadosEntrega(Store.data);
+    const a = d.alcancado;
+    openModal({
+      title: '📤 Terminar e Entregar',
+      wide: true,
+      html: `
+        <p>Confira o seu resumo antes de gerar o PDF:</p>
+        <table class="result-table entrega-resumo">
+          <tbody>
+            <tr><th scope="row">Nome do aluno</th><td><b>${esc(d.nome)}</b></td></tr>
+            <tr><th scope="row">Fase alcançada</th><td>${a
+              ? `Desafio ${a.numero} de ${d.totalDesafios} — ${esc(a.level.title)}<br><span class="muted">Reino ${a.reino.id}: ${esc(a.reino.nome)} — ${esc(a.estagio.nome)}</span>`
+              : 'Nenhum desafio concluído ainda'}</td></tr>
+            <tr><th scope="row">Total de estrelas</th><td><span class="stars">★</span> <b>${d.totalEstrelas}</b> de ${d.maxEstrelas}</td></tr>
+            <tr><th scope="row">Desafios concluídos</th><td>${d.concluidos.length} de ${d.totalDesafios}</td></tr>
+          </tbody>
+        </table>
+        <p class="muted small">O nome está errado? Feche esta janela e clique no seu nome (no topo, à direita). O PDF terá também o seu código de progresso, para o professor conferir.</p>
+        <p class="form-status entrega-status" aria-live="polite"></p>`,
+      actions: [
+        { label: '📄 Gerar PDF e salvar', cls: 'btn-primary', keepOpen: true, onClick: () => gerarEntrega(d) },
+        { label: 'Cancelar' },
+      ],
+    });
+  }
+
+  function gerarEntrega(d) {
+    const st = $('#modal .entrega-status');
+    try {
+      const bytes = Relatorio.gerarPDF(d, Relatorio.imagensDosDesafios(d.concluidos));
+      const nome = Relatorio.nomeArquivo(d);
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setStatus(st, `✅ PDF salvo na pasta Downloads como “${nome}”. Agora envie esse arquivo para o professor.`, false);
+      toast('📤 Relatório salvo: ' + esc(nome));
+    } catch (e) {
+      console.error(e);
+      setStatus(st, '⚠️ Não foi possível gerar o PDF neste navegador. Tente de novo ou avise o professor.', true);
     }
   }
 
