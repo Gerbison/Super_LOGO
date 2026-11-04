@@ -795,7 +795,7 @@
       <section class="card entrega" aria-labelledby="entrega-title">
         <div class="entrega-texto">
           <h3 id="entrega-title">📤 Terminar e Entregar</h3>
-          <p>Gera um <b>PDF</b> com o seu nome, a fase que você alcançou, o total de estrelas e o desenho de cada desafio concluído.
+          <p>Gera um <b>PDF</b> com o seu nome, a fase que você alcançou, o total de estrelas e a lista de desafios concluídos com as estrelas de cada um.
           O arquivo é salvo na pasta <b>Downloads</b> do computador. Depois, envie-o para o professor do jeito combinado em aula.</p>
           <p class="muted small">Pode entregar quantas vezes quiser: cada PDF mostra o progresso daquele momento.</p>
         </div>

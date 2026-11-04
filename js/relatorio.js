@@ -4,11 +4,11 @@
  * Gera, no próprio navegador (sem servidor e sem biblioteca externa), um PDF
  * com: nome do aluno, fase alcançada (desafio, reino e estágio), total de
  * estrelas, código de progresso (para o professor conferir) e um cartão
- * para cada desafio CONCLUÍDO, com o desenho e as estrelas ganhas.
+ * para cada desafio CONCLUÍDO, com o ícone e as estrelas ganhas (cartões compactos).
  *
  *   Relatorio.dadosEntrega(data)         → resumo (puro, testável no Node)
  *   Relatorio.gerarPDF(dados, imagens)   → Uint8Array com o PDF
- *   Relatorio.imagensDosDesafios(lista)  → JPEGs dos desenhos (navegador)
+ *   Relatorio.imagensDosDesafios(lista)  → JPEGs dos ícones dos desafios (navegador)
  *
  * O gerador de PDF (PdfDoc) é mínimo: páginas A4, fontes Helvetica padrão
  * (texto em WinAnsi, com acentos do português), retângulos, estrelas
@@ -90,6 +90,12 @@
       }
       const path = pts.map((p, i) => `${num(p[0])} ${num(p[1])} ${i ? 'l' : 'm'}`).join(' ') + ' h';
       this.page.ops.push(filled ? `${rgb('#f5b301')} rg ${rgb('#b7791f')} RG 0.6 w ${path} B` : `${rgb('#94a3b8')} RG 0.8 w ${path} S`);
+    }
+
+    /** Círculo cheio (aproximado por 4 curvas de Bézier). */
+    circle(cx, cy, r, fill) {
+      const k = 0.5523 * r, X = cx, Y = A4.h - cy;
+      this.page.ops.push(`${rgb(fill)} rg ${num(X + r)} ${num(Y)} m ${num(X + r)} ${num(Y + k)} ${num(X + k)} ${num(Y + r)} ${num(X)} ${num(Y + r)} c ${num(X - k)} ${num(Y + r)} ${num(X - r)} ${num(Y + k)} ${num(X - r)} ${num(Y)} c ${num(X - r)} ${num(Y - k)} ${num(X - k)} ${num(Y - r)} ${num(X)} ${num(Y - r)} c ${num(X + k)} ${num(Y - r)} ${num(X + r)} ${num(Y - k)} ${num(X + r)} ${num(Y)} c f`);
     }
 
     /** Registra um JPEG ({ bytes, w, h }) e devolve o nome para drawImage. */
@@ -207,7 +213,7 @@
   }
 
   /**
-   * Monta o PDF. imagens = { [id]: { bytes, w, h } } (JPEG dos desenhos);
+   * Monta o PDF. imagens = { [id]: { bytes, w, h } } (JPEG do ícone);
    * se faltar a imagem de um desafio, o cartão sai sem ela.
    */
   function gerarPDF(dados, imagens) {
@@ -262,39 +268,54 @@
       doc.text(M, y + 10, 'Nenhum desafio concluído ainda.', { size: 12, color: COR.cinza });
     }
 
-    const COLS = 3, GAP = 12;
-    const CW = (W - GAP * (COLS - 1)) / COLS; // largura do cartão
-    const IH = 112; // altura da imagem
-    const CH = IH + 74; // altura do cartão
-    let col = 0;
-    let continuacao = 1;
-    dados.concluidos.forEach((c) => {
-      if (col === 0 && y + CH > A4.h - 50) {
+    // Cartões compactos (como no mapa): número, ícone, título, forma e estrelas.
+    // Ordem: de cima para baixo em cada coluna, 3 colunas por página.
+    const COLS = 3, GAP = 10, CH = 56, VGAP = 7;
+    const CW = (W - GAP * (COLS - 1)) / COLS;
+    const nomes = new Map(); // mesma imagem de ícone entra uma vez só no arquivo
+    const cartao = (c, x, cy) => {
+      doc.rect(x, cy, CW, CH, { fill: '#ffffff', stroke: COR.borda, lineWidth: 0.8 });
+      doc.rect(x, cy, 3, CH, { fill: COR.verde });
+      doc.circle(x + 18, cy + CH / 2, 10, COR.verde);
+      const nTxt = String(c.numero);
+      doc.text(x + 18 - textWidth(nTxt, 9, true) / 2, cy + CH / 2 + 3.2, nTxt, { size: 9, bold: true, color: '#ffffff' });
+      const ix = x + 34, iz = 22;
+      const img = imagens[c.id];
+      if (img) {
+        if (!nomes.has(img)) nomes.set(img, doc.addImage(img));
+        doc.drawImage(nomes.get(img), ix, cy + (CH - iz) / 2, iz, iz);
+      }
+      const tx = ix + iz + 7, tw = CW - (tx - x) - 6;
+      // título em até 2 linhas
+      const palavras = c.level.title.split(' ');
+      let l1 = '';
+      while (palavras.length && textWidth((l1 + ' ' + palavras[0]).trim(), 8.5, true) <= tw) l1 = (l1 + ' ' + palavras.shift()).trim();
+      const l2 = palavras.length ? fitText(palavras.join(' '), 8.5, tw, true) : '';
+      const ty = l2 ? cy + 12 : cy + 17;
+      doc.text(tx, ty, l1 || fitText(c.level.title, 8.5, tw, true), { size: 8.5, bold: true, color: COR.texto });
+      if (l2) doc.text(tx, ty + 10, l2, { size: 8.5, bold: true, color: COR.texto });
+      doc.text(tx, cy + 34, fitText(c.level.shape || `Reino ${c.reino.id}`, 7.5, tw), { size: 7.5, color: COR.cinza });
+      for (let k = 0; k < c.max; k++) doc.star(tx + 5 + k * 11, cy + 45, 4.6, k < c.stars);
+      doc.text(tx + c.max * 11 + 3, cy + 48, `${c.stars}/${c.max}`, { size: 7.5, bold: true, color: COR.texto });
+    };
+
+    let resto = dados.concluidos.slice();
+    while (resto.length) {
+      const linhas = Math.max(1, Math.floor((A4.h - 50 - y + VGAP) / (CH + VGAP)));
+      const lote = resto.slice(0, linhas * COLS);
+      resto = resto.slice(lote.length);
+      const usadas = Math.ceil(lote.length / COLS);
+      lote.forEach((c, i) => {
+        const col = Math.floor(i / usadas), lin = i % usadas;
+        cartao(c, M + col * (CW + GAP), y + lin * (CH + VGAP));
+      });
+      if (resto.length) {
         doc.addPage();
-        continuacao++;
         doc.rect(0, 0, A4.w, 40, { fill: COR.azul });
         doc.text(M, 26, fitText(`Jornada da Tartaruga — ${dados.nome} (continuação)`, 12, W, true), { size: 12, bold: true, color: '#ffffff' });
         y = 60;
       }
-      const x = M + col * (CW + GAP);
-      doc.rect(x, y, CW, CH, { fill: '#ffffff', stroke: COR.borda, lineWidth: 0.8 });
-      const img = imagens[c.id];
-      if (img) {
-        const name = doc.addImage(img);
-        // mantém a proporção dentro da área da imagem
-        const k = Math.min((CW - 12) / img.w, (IH - 8) / img.h);
-        const iw = img.w * k, ih = img.h * k;
-        doc.drawImage(name, x + (CW - iw) / 2, y + 6 + (IH - 8 - ih) / 2, iw, ih);
-      }
-      doc.rect(x, y + IH, CW, 0.6, { fill: COR.borda });
-      doc.text(x + 8, y + IH + 16, `Desafio ${c.numero}`, { size: 8, bold: true, color: COR.azul2 });
-      doc.text(x + 8, y + IH + 30, fitText(c.level.title, 10, CW - 16, true), { size: 10, bold: true, color: COR.texto });
-      doc.text(x + 8, y + IH + 43, fitText(`Reino ${c.reino.id} · ${c.estagio.nome}`, 8, CW - 16), { size: 8, color: COR.cinza });
-      for (let s = 0; s < c.max; s++) doc.star(x + 15 + s * 17, y + IH + 58, 7, s < c.stars);
-      doc.text(x + 15 + c.max * 17 + 2, y + IH + 62, `${c.stars}/${c.max}`, { size: 9, bold: true, color: COR.texto });
-      col++;
-      if (col === COLS) { col = 0; y += CH + GAP; }
-    });
+    }
 
     // rodapé com numeração em todas as páginas
     const totalPags = doc.pages.length;
@@ -303,7 +324,6 @@
       doc.text(M, A4.h - 24, `Jornada da Tartaruga · ${fitText(dados.nome, 9, 250)}`, { size: 8, color: COR.cinza });
       doc.text(A4.w - M - 60, A4.h - 24, `Página ${i + 1} de ${totalPags}`, { size: 8, color: COR.cinza });
     });
-    void continuacao;
     return doc.build();
   }
 
@@ -315,16 +335,26 @@
     return out;
   }
 
-  /** Desenho de cada desafio concluído como JPEG (fundo branco). */
+  /** Ícone (emoji) de cada desafio concluído como JPEG pequeno; ícones iguais são reaproveitados. */
   function imagensDosDesafios(concluidos) {
-    const imgs = {};
+    const imgs = {}, cache = {};
     concluidos.forEach((c) => {
-      const canvas = document.createElement('canvas');
-      root.Turtle.renderFit(canvas, root.Levels.targetOf(c.level), {
-        width: 480, height: 330, padding: 22, bg: '#ffffff', ink: '#1d4ed8', lineWidth: 2.4,
-      });
-      const url = canvas.toDataURL('image/jpeg', 0.88);
-      imgs[c.id] = { bytes: base64ParaBytes(url.split(',')[1]), w: canvas.width, h: canvas.height };
+      const icon = c.level.icon || '🐢';
+      if (!cache[icon]) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 48;
+        const g = canvas.getContext('2d');
+        g.fillStyle = '#ffffff';
+        g.fillRect(0, 0, 48, 48);
+        g.font = '36px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+        g.fillStyle = '#1d4ed8'; // símbolos de texto (▭ △ ○) saem em azul
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(icon, 24, 27);
+        const url = canvas.toDataURL('image/jpeg', 0.9);
+        cache[icon] = { bytes: base64ParaBytes(url.split(',')[1]), w: 48, h: 48 };
+      }
+      imgs[c.id] = cache[icon];
     });
     return imgs;
   }

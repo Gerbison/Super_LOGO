@@ -87,7 +87,7 @@ ao clicar em **Gerar PDF e salvar**, baixa um arquivo para a pasta **Downloads**
 - **fase alcançada** — o desafio mais avançado concluído, com reino e estágio;
 - **total de estrelas** (e o máximo possível) e quantos desafios foram concluídos;
 - o **código de progresso**, para o professor conferir se quiser;
-- o **desenho de cada desafio CONCLUÍDO**, com as estrelas ganhas em cada um.
+- a **lista dos desafios CONCLUÍDOS** (número, ícone, título e estrelas ganhas), em cartões compactos de 3 colunas — sem os desenhos, para o arquivo ficar leve.
 
 O PDF é montado no próprio navegador (`js/relatorio.js`), sem internet e sem servidor.
 O aluno pode entregar quantas vezes quiser; cada arquivo mostra o progresso daquele momento.
