@@ -398,7 +398,7 @@ test('retrocompatível: quem concluiu os 15 níveis antigos não perde nada', ()
   assert.strictEqual(Cultivo.proximo(d).id, 16);
   assert.deepStrictEqual(Cultivo.registrarRompimentos(d).map((r) => r.id), [2]); // R2: 8 e 9 já vencidos
 });
-test('Qi do reino e próximo desafio', () => {
+test('Ki do reino e próximo desafio', () => {
   const d = vazio();
   assert.strictEqual(Cultivo.proximo(d).id, 1);
   conclui(d, [1, 2, 3]);
@@ -518,7 +518,7 @@ test('Reino 6: precisa de 4 de 5 estrelas', () => {
   conclui(d, idsDoReino(6), 4);
   assert.ok(Cultivo.reinoRompido(d, 6));
 });
-test('Qi conta só os desafios com as estrelas mínimas', () => {
+test('Ki conta só os desafios com as estrelas mínimas', () => {
   const d = vazio();
   conclui(d, idsDoReino(1).concat(idsDoReino(2)));
   conclui(d, [10, 13], 2);

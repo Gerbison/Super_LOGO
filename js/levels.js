@@ -331,7 +331,7 @@
   const CULTIVO_ORIGINAIS = {
     1: { title: 'O Despertar', shape: 'Linha reta', lore: 'A tartaruga espiritual abre os olhos. Todo caminho começa com um único traço.' },
     2: { title: 'O Passo de Retorno', shape: 'Ida e volta', lore: 'O cultivador que sabe avançar também sabe voltar à origem.' },
-    3: { title: 'O Primeiro Giro do Qi', shape: 'Ângulo reto', lore: 'A energia muda de direção: o primeiro giro desperta o Qi.' },
+    3: { title: 'O Primeiro Giro do Ki', shape: 'Ângulo reto', lore: 'A energia muda de direção: o primeiro giro desperta o Ki.' },
     4: {
       title: 'O Selo Quadrado', shape: 'Quadrado', lore: 'Quatro lados, quatro cantos: o primeiro selo do Reino Mundano.',
       // sem REPITA (ainda não ensinado) são 8 comandos em 8 linhas; a meta de ⭐⭐⭐ usa REPITA
@@ -357,7 +357,7 @@
       success: 'A mandala está completa — e com pouca energia desperdiçada!',
       concept: {
         title: '💡 Refinamento',
-        text: 'Você combinou <b>repetições aninhadas</b> e <b>decomposição</b> gastando poucos comandos. Cada linha a menos é energia (Qi) economizada.',
+        text: 'Você combinou <b>repetições aninhadas</b> e <b>decomposição</b> gastando poucos comandos. Cada linha a menos é energia (Ki) economizada.',
       },
     },
   };
@@ -525,7 +525,7 @@
     },
     /* --------------------------- Reino 5 ------------------------------ */
     {
-      id: 25, icon: '🌀', title: 'O Redemoinho de Qi', shape: 'Espiral quadrada',
+      id: 25, icon: '🌀', title: 'O Redemoinho de Ki', shape: 'Espiral quadrada',
       lore: 'O Mestre da Matriz enxerga o número de cada volta. A energia cresce a cada giro.',
       challenge: 'Desenhe uma espiral quadrada de 40 lados: o 1º lado tem 5 passos, o 2º tem 10, o 3º tem 15... Use REPCONT.',
       solution: 'REPITA 40 [PF REPCONT * 5 PD 90]',
@@ -926,7 +926,7 @@
       return {
         completed: false, stars: 0, maxStars, compare: cmp,
         title: 'O desenho está perfeito!',
-        text: `Mas a técnica ainda gasta Qi demais: ${analysis.size} comandos. O limite deste desafio é ${level.limit}. Procure o padrão que se repete e refine o código.`,
+        text: `Mas a técnica ainda gasta Ki demais: ${analysis.size} comandos. O limite deste desafio é ${level.limit}. Procure o padrão que se repete e refine o código.`,
       };
     }
 

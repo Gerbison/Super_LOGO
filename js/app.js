@@ -112,7 +112,7 @@
     return `Desafio ${Cultivo.numero(level.id)}`;
   }
 
-  /** Cabeçalho: reino de cultivo, estágio, título marcial, barra de Qi e estrelas do desafio em foco. */
+  /** Cabeçalho: reino de cultivo, estágio, título marcial, barra de Ki e estrelas do desafio em foco. */
   function updateHUD() {
     const p = progress();
     const sit = Cultivo.situacao(Store.data);
@@ -124,7 +124,7 @@
     $('#hud-qi').style.width = Math.max(sit.qi, 3) + '%';
     $('#hud-qi-pct').textContent = sit.qi + '%';
     $('#hud-qibar').setAttribute('aria-valuenow', String(sit.qi));
-    card.setAttribute('aria-label', `Reino ${sit.reino.id}: ${sit.reino.nome}, ${sit.estagio.nome}. Título: ${sit.titulo}. Energia espiritual (Qi) ${sit.qi}% até o rompimento.`);
+    card.setAttribute('aria-label', `Reino ${sit.reino.id}: ${sit.reino.nome}, ${sit.estagio.nome}. Título: ${sit.titulo}. Energia espiritual (Ki) ${sit.qi}% até o rompimento.`);
     const lvl = (currentView === 'desafio' && activeLevel && activeLevel.id !== 'custom') ? activeLevel : p.next;
     const st = Store.level(lvl.id).stars || 0;
     const maxS = Levels.maxStarsOf(lvl);
@@ -547,7 +547,7 @@
           <li><a href="#/aprender" class="journey-step"><span class="j-icon">📘</span><b>Aprender</b><small>${TUTORIAL.length} aulas curtas sobre os comandos</small></a></li>
           <li><a href="#/comandos" class="journey-step"><span class="j-icon">🧪</span><b>Experimentar</b><small>Biblioteca de comandos com exemplos</small></a></li>
           <li><a href="#/desafios" class="journey-step"><span class="j-icon">🧩</span><b>Resolver desafios</b><small>${JORNADA.length} desafios em 6 reinos de cultivo</small></a></li>
-          <li><a href="#/conquistas" class="journey-step"><span class="j-icon">☯️</span><b>Romper reinos</b><small>O Dao dos Algoritmos: estrelas, Qi e rompimentos</small></a></li>
+          <li><a href="#/conquistas" class="journey-step"><span class="j-icon">☯️</span><b>Romper reinos</b><small>O Dao dos Algoritmos: estrelas, Ki e rompimentos</small></a></li>
           <li><a href="#/galeria" class="journey-step"><span class="j-icon">🎨</span><b>Criar</b><small>Galeria: o que posso criar?</small></a></li>
           <li><a href="#/livre" class="journey-step"><span class="j-icon">🚀</span><b>Programar livremente</b><small>Modo Livre, sem regras</small></a></li>
         </ol>`;
@@ -719,7 +719,7 @@
       const aberto = ks.some((k) => isAdmin() || Cultivo.stageUnlocked(Store.data, k));
       const ids = r.subEstagios.flatMap((st) => st.desafiosIds);
       const feitos = ids.filter((id) => Store.level(id).completed).length;
-      // Qi = desafios concluídos COM as estrelas mínimas (igual ao cabeçalho)
+      // Ki = desafios concluídos COM as estrelas mínimas (igual ao cabeçalho)
       const qi = Math.round((ids.filter((id) => Cultivo.cumprido(Store.data, id)).length / ids.length) * 100);
       const estado = rompido ? 'rompido' : aberto ? 'aberto' : 'selado';
       const picoVencido = r.subEstagios[2].desafiosIds.every((id) => Store.level(id).completed);
@@ -737,7 +737,7 @@
             </div>
             <div class="realm-status">
               <span class="realm-badge">${rompido ? '✨ Rompido' : picoVencido && (faltam.length || ids.some((id) => !Store.level(id).completed)) ? '⚠️ Faltam estrelas' : aberto ? '🔥 Em cultivo' : '🔒 Selado'}</span>
-              <span class="qi-line"><span class="qi-label">Qi</span>
+              <span class="qi-line"><span class="qi-label">Ki</span>
                 <span class="qi-bar" role="progressbar" aria-label="Energia espiritual do Reino ${r.id}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${qi}"><i style="width:${Math.max(qi, 2)}%"></i></span>
                 <b>${qi}%</b></span>
               <small>${feitos}/${ids.length} desafios${rompido ? ' · título: ' + esc(r.titulo) : ''}${faltam.length ? ` · ${faltam.length} abaixo do mínimo` : ''}</small>

@@ -66,10 +66,10 @@
       ],
     },
     {
-      id: 4, estrelasMinimas: 3, nome: 'Refinamento Puro', subtitulo: 'Cura do Desvio de Qi', icone: '⚗️', corAura: '#fbbf24',
+      id: 4, estrelasMinimas: 3, nome: 'Refinamento Puro', subtitulo: 'Cura do Desvio de Ki', icone: '⚗️', corAura: '#fbbf24',
       descricao: 'Eliminar o desperdício de energia: onde o mundano usa trinta blocos, o refinado usa cinco.',
       foco: 'Otimização: limite máximo de comandos, padrões mínimos e camadas de repetição.',
-      titulo: 'Refinador do Qi',
+      titulo: 'Refinador do Ki',
       citacao: 'A perfeição é alcançada quando não há mais nada a retirar.',
       subEstagios: [
         { tipo: 'INICIAL', desafiosIds: [21, 14] },

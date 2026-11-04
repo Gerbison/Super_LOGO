@@ -19,7 +19,7 @@ Ambiente educacional **gratuito**, que roda **direto no navegador**, para ensina
 | Área | Descrição |
 |---|---|
 | 📘 **Aprender** | Tutorial "Aprenda a falar com a Tartaruga" em 10 aulas: PF, PT, PD/PE (com demonstração de 90°/180°/270°/360°), caneta, limpar, REPITA com cada volta colorida e o conceito de LOOP; e os pergaminhos avançados REPCONT, PARA … FIM e recursão (SE/PARE). |
-| ☯️ **Desafios** | **O Dao dos Algoritmos:** 36 desafios em 6 reinos de cultivo × 3 estágios (Inicial, Intermediário e Pico), desenho-alvo, verificação automática pelo **resultado** (não pelo código), 3 dicas por desafio, estrelas, barra de Qi e **Rompimento de Reino**. |
+| ☯️ **Desafios** | **O Dao dos Algoritmos:** 36 desafios em 6 reinos de cultivo × 3 estágios (Inicial, Intermediário e Pico), desenho-alvo, verificação automática pelo **resultado** (não pelo código), 3 dicas por desafio, estrelas, barra de Ki e **Rompimento de Reino**. |
 | 🎨 **Modo Livre** | Canvas grande, cores, espessura, caneta, centro, desfazer/refazer, zoom, salvar desenhos, exportar PNG e baixar o código (.txt). |
 | 🖼️ **Galeria** | 15 exemplos (quadrado, triângulo, estrela, círculo, casa, sol, flor, espiral, floco, padrões, árvore fractal, Koch...) — o aluno vê só o desenho (tracejado) e tenta reproduzi-lo com o próprio código; o código dos exemplos não é mostrado. |
 | 📚 **Comandos** | Biblioteca visual com um cartão por comando. |
@@ -37,13 +37,13 @@ A jornada é organizada como um cultivo de artes marciais (Murim/Wuxia): **6 rei
 | 🐢 1 | O Primeiro Traço — Despertar da Tartaruga | PF/PT/PD/PE, LEVANTE/BAIXE, precisão | 1–6 |
 | 🔁 2 | O Laço Harmônico — Ciclo Elemental | REPITA, polígonos, 360° | 7–12 |
 | 🪷 3 | Geometria Espiritual — Manifestação dos Padrões | laços aninhados, rosetas de 12 e 24 pontas | 13–18 |
-| ⚗️ 4 | Refinamento Puro — Cura do Desvio de Qi | otimização com **limite de comandos** | 19–24 |
+| ⚗️ 4 | Refinamento Puro — Cura do Desvio de Ki | otimização com **limite de comandos** | 19–24 |
 | 🌀 5 | Mestre da Matriz — Visão Abstrata | REPCONT, PARA … FIM, parâmetros, Sierpinski, espiral dourada | 25–30 |
 | ☯️ 6 | O Iluminado do Dao — A Tartaruga Celestial | Koch, árvore fractal, curva do dragão, árvore de Pitágoras, mandala celestial | 31–36 |
 
 - **Estágios:** 🌱 Inicial → 🌿 Intermediário → ⛰️ Pico (Gargalo). Um estágio abre quando **os dois desafios do anterior** forem concluídos.
-- **Rompimento de Reino:** vencer os dois desafios do Pico abre o próximo reino e mostra uma janela celebratória (aura, citação do Dao e **novo título marcial**: Discípulo do Traço, Cultivador do Ciclo, Artífice das Mandalas, Refinador do Qi, Mestre da Matriz, Iluminado do Dao).
-- **Topo da tela:** insígnia e título do reino atual (ex.: *Reino 2: O Laço Harmônico — Pico do Reino · Discípulo do Traço*) e a **barra de Qi** (porcentagem do reino concluída).
+- **Rompimento de Reino:** vencer os dois desafios do Pico abre o próximo reino e mostra uma janela celebratória (aura, citação do Dao e **novo título marcial**: Discípulo do Traço, Cultivador do Ciclo, Artífice das Mandalas, Refinador do Ki, Mestre da Matriz, Iluminado do Dao).
+- **Topo da tela:** insígnia e título do reino atual (ex.: *Reino 2: O Laço Harmônico — Pico do Reino · Discípulo do Traço*) e a **barra de Ki** (porcentagem do reino concluída).
 - **Retrocompatível:** os 15 níveis originais mantêm seus ids (estão nos Reinos 1–4); quem já tinha progresso não perde nada — os estágios que ele já alcançou continuam abertos e os reinos já vencidos são marcados como rompidos (sem repetir a celebração).
 - **Estrelas nos Reinos 1 e 2 (3 ★):** ⭐ desenho correto · ⭐⭐ usando a técnica do desafio · ⭐⭐⭐ dentro da meta de comandos **e** de linhas. Ali, técnica obrigatória e desenho repetido ainda reprovam.
 - **Estrelas do Reino 3 em diante (5 ★, modo flexível):** se a tartaruga passar por cima do tracejado e fizer o desenho pedido, o desafio **passa**. As regras só descontam: −1 ★ por não usar a técnica pedida (REPITA, PARA, REPCONT, recursão), −1 ★ por passar da meta de comandos (−2 se passar do dobro), −1 ★ por passar da meta de linhas, −1 ★ por passar do limite (Reino 4), −1 ★ por repetir linhas por cima do tracejado e −1 ★ por usar todas as dicas (mínimo 1 ★). As dicas abertas ficam gravadas por desafio: atualizar a página ou importar o código de progresso em outro computador não as esconde nem apaga o desconto. A janela de sucesso lista cada desconto.
@@ -144,7 +144,7 @@ js/logo.js            INTERPRETADOR: tokenizer → parser (AST) → ações; err
 js/turtle.js          estado da tartaruga, desenho no Canvas, animação, PNG
 js/checker.js         compara o desenho do aluno com o desenho-alvo
 js/levels.js          os 36 desafios + avaliação, estrelas e limite de comandos
-js/cultivo.js         O Dao dos Algoritmos: reinos, estágios, desbloqueio, Qi e rompimentos
+js/cultivo.js         O Dao dos Algoritmos: reinos, estágios, desbloqueio, Ki e rompimentos
 js/fractals.js        curva/floco de Koch em JavaScript (usado nos testes e prévias)
 js/tutorial.js        aulas do tutorial
 js/examples.js        exemplos da galeria
@@ -226,7 +226,7 @@ O cartão da Biblioteca de Comandos e a Ajuda são gerados a partir de `doc`. Pa
 
 - **Novas funções de valor** (SEN, COS, ALEATÓRIO...): entram em `evalExpr()` de `js/logo.js`.
 - **Variáveis globais e cores pelo código:** `FACA`, `ATRIBUA`, `MUDECOR`... já respondem "em breve" (`FUTURE_WORDS`).
-- **Novos reinos ou estágios:** basta acrescentar em `REINOS` (`js/cultivo.js`); mapa, cabeçalho e barra de Qi se ajustam sozinhos.
+- **Novos reinos ou estágios:** basta acrescentar em `REINOS` (`js/cultivo.js`); mapa, cabeçalho e barra de Ki se ajustam sozinhos.
 
 ## Licença
 
